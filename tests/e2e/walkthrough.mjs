@@ -279,6 +279,11 @@ function runStubWorker() {
   });
 }
 async function aiStep(name, fn) {
+  if (!canRunWorker && process.env.E2E_REQUIRE_AI_STEPS) {
+    results.push(["FAIL", name, "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set but E2E_REQUIRE_AI_STEPS is"]);
+    console.log("FAIL", name);
+    return;
+  }
   if (!canRunWorker) {
     results.push(["SKIP", name, "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set"]);
     console.log("SKIP", name);
