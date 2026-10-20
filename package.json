@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "npm run test:unit && npm run test:db",
     "test:unit": "vitest run src",
     "test:db": "scripts/with-local-postgres.sh vitest run tests/db",
