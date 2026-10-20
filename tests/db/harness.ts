@@ -101,7 +101,7 @@ export async function expectDbError(promise: Promise<unknown>): Promise<pg.Datab
 
 export async function createUser(db: Db, email: string, fullName: string): Promise<string> {
   const { rows } = await db.admin.query<{ id: string }>(
-    "insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id",
+    "insert into auth.users (email, raw_user_meta_data, email_confirmed_at) values ($1, $2, now()) returning id",
     [email, { full_name: fullName }],
   );
   return rows[0].id;

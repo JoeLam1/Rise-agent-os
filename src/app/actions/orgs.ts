@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin, requireUser } from "@/lib/auth";
+import { sendInviteEmail } from "@/lib/supabase/invite-email";
 import { friendlyDbError } from "@/lib/domain/db-errors";
 import type { ActionState } from "./state";
 
@@ -38,18 +39,24 @@ export async function addMember(orgSlug: string, _prev: ActionState, formData: F
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { supabase, org } = await requireAdmin(orgSlug);
-  const { error } = await supabase.rpc("add_org_member", {
+  const { data, error } = await supabase.rpc("invite_member", {
     p_org: org.id,
     p_email: parsed.data.email,
     p_role: parsed.data.role,
   });
   if (error) {
-    if (error.code === "P0002") return { error: "No account exists for that email yet. Ask them to sign up first." };
     if (error.code === "23505") return { error: "That person is already a member." };
     return { error: friendlyDbError(error) };
   }
   revalidatePath(`/o/${orgSlug}/members`);
-  return { message: `Added ${parsed.data.email}.` };
+  if (data === "added") return { message: `Added ${parsed.data.email}.` };
+
+  const sent = await sendInviteEmail(parsed.data.email);
+  return sent
+    ? { message: `Invited ${parsed.data.email}. They'll join when they open the emailed link.` }
+    : {
+        message: `Invited ${parsed.data.email}, but the email couldn't be sent right now. They can sign up with this address to join.`,
+      };
 }
 
 export async function setAiReview(orgSlug: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -59,4 +66,11 @@ export async function setAiReview(orgSlug: string, _prev: ActionState, formData:
   if (error) return { error: friendlyDbError(error) };
   revalidatePath(`/o/${orgSlug}`, "layout");
   return { message: enabled ? "AI review is on for new review requests." : "AI review is off. New requests use the mock." };
+}
+
+export async function revokeInvitation(orgSlug: string, invitationId: string): Promise<void> {
+  const { supabase } = await requireAdmin(orgSlug);
+  const { error } = await supabase.rpc("revoke_invitation", { p_invitation: invitationId });
+  if (error) throw new Error(`Could not revoke the invitation: ${error.message}`);
+  revalidatePath(`/o/${orgSlug}/members`);
 }
