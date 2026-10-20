@@ -122,8 +122,8 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
           <CardHeader>
             <CardTitle>Transactions of former members</CardTitle>
             <p className="text-muted-foreground text-sm">
-              These people were removed but still have transactions here. Brokers and admins can see them; give them
-              to a current member so someone answers for them.
+              These people were removed but still have transactions here. Brokers and admins can still open them.
+              Give them to a current member so someone answers for them.
             </p>
           </CardHeader>
           <CardContent>

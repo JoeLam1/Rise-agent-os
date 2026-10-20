@@ -48,6 +48,11 @@ for what was built, what was tested, and the known gaps.
 - Backup codes for a lost phone.
 - Membership changes go only through database functions that require two-step sign-in.
 
+## What Sprint 005 adds
+- A test set of 28 fictional NJ contracts with known answers, and `npm run eval:ai`
+  to score the AI review against it (accuracy per checklist item, kinds of error, cost).
+- Admins hand a removed agent's transactions to a current member.
+
 ## Docs
 | Doc | What it covers |
 | --- | --- |
@@ -58,6 +63,7 @@ for what was built, what was tested, and the known gaps.
 | [`docs/SPRINT_002.md`](docs/SPRINT_002.md) | Sprint 002 plan, delivery, test report and how to run the worker |
 | [`docs/SPRINT_003.md`](docs/SPRINT_003.md) | Sprint 003 plan, delivery and test report |
 | [`docs/SPRINT_004.md`](docs/SPRINT_004.md) | Sprint 004 plan, delivery and test report |
+| [`docs/SPRINT_005.md`](docs/SPRINT_005.md) | Sprint 005: AI review evaluation results, transaction reassignment |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Hosted Supabase, Vercel, worker host, backups, alerts, account recovery |
 | [`CLAUDE.md`](CLAUDE.md) | Engineering rules for anyone (human or AI) working in this repo |
 
@@ -81,6 +87,7 @@ npm run test:unit   # domain logic
 npm run test:db     # RLS and workflow tests against PostgreSQL
 npm run lint && npm run typecheck && npm run build
 npm run test:e2e    # browser walkthrough; needs `npx supabase start` and the app on :3000
+npm run eval:ai     # lists the AI evaluation cases; add --live to call the model (costs ~$2)
 ```
 `test:db` starts a throwaway PostgreSQL cluster from local binaries (or uses
 `DATABASE_URL`), loads a small Supabase compatibility shim

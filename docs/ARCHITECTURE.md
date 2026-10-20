@@ -202,3 +202,14 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   - A code never grants `aal2` by itself; the person must set up a new
     authenticator before doing anything that needs it.
   - Each use is written to the audit log of every brokerage the person belongs to.
+
+## AI review evaluation and reassignment (Sprint 005)
+- **Evaluation:** `src/lib/eval/corpus.ts` builds fictional contract PDFs with
+  known answers; `src/lib/eval/score.ts` scores results.
+  `scripts/eval-ai-review.ts` runs `NjContractEngine` directly, with no database,
+  and records token usage per call. Results are in `docs/SPRINT_005.md`.
+- **Reassignment:** `reassign_transactions()` and `former_member_transactions()`
+  (brokers and admins; reassigning needs `aal2`). Each move is audited as
+  `transaction.reassigned`.
+  - `transactions_guard` now checks the agent's membership only when the agent
+    is set or changed, so a removed agent's transactions stay editable.

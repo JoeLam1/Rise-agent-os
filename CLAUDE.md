@@ -44,6 +44,7 @@ npm run build
 npm run test:e2e     # browser walkthrough against a running app + local Supabase
 npm run worker       # AI review worker (server-side; needs service key + RISE_ANTHROPIC_API_KEY)
 npm run health       # production health check (worker host; exits 1 on a problem)
+npm run eval:ai      # AI review evaluation; --live calls the model (needs RISE_ANTHROPIC_API_KEY, ~$2)
 npx supabase start   # full local Supabase (requires Docker; in a cloud container start `dockerd` first)
 ```
 

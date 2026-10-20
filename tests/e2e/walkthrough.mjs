@@ -624,7 +624,8 @@ await step("Admin removes the agent and hands their transactions to the broker",
   await shot(p, "former-member-transactions");
   await p.getByLabel(`New agent for ${who}'s transactions`).selectOption({ label: "Bo Demo-Broker" });
   await p.getByRole("button", { name: `Reassign ${who}'s transactions` }).click();
-  await p.getByText("Moved 1 transaction.").waitFor();
+  // Once nothing is left to reassign, the whole section goes away.
+  await p.getByText("Transactions of former members").waitFor({ state: "detached" });
   await p.reload();
   expect((await p.getByText("Transactions of former members").count()) === 0, "former member still listed");
   await p.goto(`${BASE}/o/${slug}/audit`);
