@@ -93,6 +93,17 @@ export async function removeMember(orgSlug: string, membershipId: string): Promi
   return { message: "Removed." };
 }
 
+export async function reassignTransactions(orgSlug: string, fromAgent: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const to = z.string().uuid().safeParse(formData.get("to"));
+  if (!to.success) return { error: "Choose who takes over." };
+  const { supabase, org } = await requireAdmin(orgSlug);
+  const { data, error } = await supabase.rpc("reassign_transactions", { p_org: org.id, p_from: fromAgent, p_to: to.data });
+  if (error) return { error: friendlyDbError(error) };
+  revalidatePath(`/o/${orgSlug}`, "layout");
+  const n = data as number;
+  return { message: `Moved ${n} transaction${n === 1 ? "" : "s"}.` };
+}
+
 export async function revokeInvitation(orgSlug: string, invitationId: string): Promise<void> {
   const { supabase } = await requireAdmin(orgSlug);
   const { error } = await supabase.rpc("revoke_invitation", { p_invitation: invitationId });

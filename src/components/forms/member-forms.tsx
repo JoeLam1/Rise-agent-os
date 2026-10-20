@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { changeMemberRole, removeMember } from "@/app/actions/orgs";
+import { changeMemberRole, reassignTransactions, removeMember } from "@/app/actions/orgs";
 import { initialActionState } from "@/app/actions/state";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -43,6 +43,38 @@ export function RemoveMemberButton({ orgSlug, membershipId, who }: { orgSlug: st
       <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(false)}>
         Cancel
       </Button>
+      <FormMessage state={state} className="basis-full" />
+    </form>
+  );
+}
+
+export function ReassignForm({
+  orgSlug,
+  fromAgent,
+  who,
+  members,
+}: {
+  orgSlug: string;
+  fromAgent: string;
+  who: string;
+  members: { user_id: string; name: string }[];
+}) {
+  const [state, action] = useActionState(reassignTransactions.bind(null, orgSlug, fromAgent), initialActionState);
+  return (
+    <form action={action} className="flex flex-wrap items-center justify-end gap-2">
+      <NativeSelect name="to" defaultValue="" aria-label={`New agent for ${who}'s transactions`} className="w-48" required>
+        <option value="" disabled>
+          Choose a member
+        </option>
+        {members.map((m) => (
+          <option key={m.user_id} value={m.user_id}>
+            {m.name}
+          </option>
+        ))}
+      </NativeSelect>
+      <SubmitButton size="sm" variant="outline" pendingText="Moving…" aria-label={`Reassign ${who}'s transactions`}>
+        Reassign
+      </SubmitButton>
       <FormMessage state={state} className="basis-full" />
     </form>
   );

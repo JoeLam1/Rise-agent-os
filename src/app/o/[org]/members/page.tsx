@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
-import { listMembers, listOpenInvitations, memberTwoStepStatus, displayName } from "@/lib/data/queries";
-import { MemberRoleForm, RemoveMemberButton } from "@/components/forms/member-forms";
+import { formerMemberTransactions, listMembers, listOpenInvitations, memberTwoStepStatus, displayName } from "@/lib/data/queries";
+import { MemberRoleForm, ReassignForm, RemoveMemberButton } from "@/components/forms/member-forms";
 import { revokeInvitation } from "@/app/actions/orgs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,13 @@ export const metadata: Metadata = { title: "Members" };
 export default async function MembersPage({ params }: PageProps<"/o/[org]/members">) {
   const { org: slug } = await params;
   const { supabase, org, userId } = await requireAdmin(slug);
-  const [members, invitations, twoStep] = await Promise.all([
+  const [members, invitations, twoStep, former] = await Promise.all([
     listMembers(supabase, org.id),
     listOpenInvitations(supabase, org.id),
     memberTwoStepStatus(supabase, org.id),
+    formerMemberTransactions(supabase, org.id),
   ]);
+  const choices = members.map((m) => ({ user_id: m.user_id, name: displayName(m.profile) }));
 
   return (
     <>
@@ -115,6 +117,47 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
           </Table>
         </CardContent>
       </Card>
+      {former.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Transactions of former members</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              These people were removed but still have transactions here. Brokers and admins can still open them.
+              Give them to a current member so someone answers for them.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Former member</TableHead>
+                  <TableHead>Open</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {former.map((f) => {
+                  const who = f.full_name || f.email || "Former member";
+                  return (
+                    <TableRow key={f.agent_id}>
+                      <TableCell>
+                        {who}
+                        {f.full_name && f.email ? <span className="text-muted-foreground block text-xs">{f.email}</span> : null}
+                      </TableCell>
+                      <TableCell>{f.open_count}</TableCell>
+                      <TableCell>{f.total_count}</TableCell>
+                      <TableCell className="text-right">
+                        <ReassignForm orgSlug={slug} fromAgent={f.agent_id} who={who} members={choices} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }

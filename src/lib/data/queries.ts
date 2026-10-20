@@ -153,6 +153,15 @@ export async function memberTwoStepStatus(supabase: ServerSupabase, orgId: strin
   return new Map(((data ?? []) as { user_id: string; two_step: boolean }[]).map((r) => [r.user_id, r.two_step]));
 }
 
+export type FormerAgent = { agent_id: string; email: string | null; full_name: string | null; open_count: number; total_count: number };
+
+/** Former members who still have transactions here. Brokers and admins only (the database checks). */
+export async function formerMemberTransactions(supabase: ServerSupabase, orgId: string): Promise<FormerAgent[]> {
+  const { data, error } = await supabase.rpc("former_member_transactions", { p_org: orgId });
+  if (error) throw new Error(`Could not load former members' transactions: ${error.message}`);
+  return (data ?? []) as FormerAgent[];
+}
+
 /** Names for display. Profiles are visible only for people who share an org. */
 export async function profilesById(supabase: ServerSupabase, ids: (string | null | undefined)[]) {
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];

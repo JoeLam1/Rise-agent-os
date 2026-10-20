@@ -26,7 +26,7 @@ setup.
   appointed first.
 - **Removing someone keeps their work.** Transactions, documents, reviews and
   audit entries stay with the brokerage, and the removed person loses access.
-  Reassigning their open transactions to another agent isn't built yet.
+  Reassigning their transactions to another agent came in Sprint 005.
 - **Backup codes reset, they don't sign you in.** A code (after the password)
   removes the lost authenticator, and the person sets up a new one before doing
   anything that needs two-step sign-in. That keeps the codes simple and avoids
