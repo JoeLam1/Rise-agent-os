@@ -116,10 +116,10 @@ describe("cross-tenant writes", () => {
   });
 
   it("an agent cannot promote themselves", async () => {
-    const res = await runAs(db, s.users.alphaAgent, "update public.memberships set role = 'admin' where user_id = $1", [
-      s.users.alphaAgent,
-    ]);
-    expect(res.rowCount).toBe(0);
+    const direct = await expectDbError(
+      runAs(db, s.users.alphaAgent, "update public.memberships set role = 'admin' where user_id = $1", [s.users.alphaAgent]),
+    );
+    expect(direct.code).toBe("42501");
     const err = await expectDbError(
       runAs(db, s.users.alphaAgent, "select public.add_org_member($1, 'agent1@alpha.test', 'admin')", [s.alpha.org]),
     );

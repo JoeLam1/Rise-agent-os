@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/domain/redirects";
+import { friendlyDbError } from "@/lib/domain/db-errors";
 import type { ActionState } from "./state";
 
 const code = z
@@ -39,6 +40,33 @@ export async function confirmTotpEnrollment(factorId: string, _prev: ActionState
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: parsed.data });
   if (error) return { error: "That code didn't match. Check the time on your phone and try the newest code." };
   return { message: "Two-step sign-in is on." };
+}
+
+export type BackupCodesState = ActionState & { codes?: string[] };
+
+/** New backup codes replace the old ones. Shown once; only hashes are stored. */
+export async function createBackupCodes(): Promise<BackupCodesState> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_backup_codes");
+  if (error) return { error: friendlyDbError(error) };
+  return { codes: data as string[] };
+}
+
+/**
+ * Lost phone: a backup code removes the authenticator app so a new one can be
+ * set up. The session is refreshed so it no longer expects a code.
+ */
+export async function redeemBackupCode(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const value = String(formData.get("backupCode") ?? "").trim();
+  if (!value) return { error: "Enter one of your backup codes." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("use_backup_code", { p_code: value });
+  if (error) {
+    return { error: error.code === "54000" ? "Too many tries. Wait 15 minutes and try again." : friendlyDbError(error) };
+  }
+  if (!data) return { error: "That backup code didn't work. Each code works once." };
+  await supabase.auth.refreshSession();
+  redirect("/account/security?reset=1");
 }
 
 /** Second step of signing in for accounts that have an authenticator app. */

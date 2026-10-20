@@ -150,7 +150,11 @@ are claimed with row locks, so a second instance is safe but not needed.
 ## 7. Account recovery
 
 - **Forgotten password:** self-service from the sign-in page.
-- **Lost phone (two-step sign-in):** there is no self-service recovery yet.
+- **Lost phone (two-step sign-in):** if the person saved their backup codes
+  (Security page), they sign in with their password, choose "Lost your phone?
+  Use a backup code", and set up a new authenticator app. The audit log of each
+  brokerage they belong to records it.
+- **Lost phone and no backup codes:**
   1. Someone with access to the Supabase dashboard confirms the person's
      identity outside the app (in person, or by phone at a known number).
   2. They delete the person's MFA factor under **Authentication → Users → the
@@ -162,6 +166,8 @@ are claimed with row locks, so a second instance is safe but not needed.
 - [ ] Confirm email on; TOTP enabled; Site URL and templates set; SMTP working (send yourself an invite)
 - [ ] Vercel has only the two `NEXT_PUBLIC_` variables
 - [ ] Worker running; `npm run health` passes; heartbeat and uptime alerts reach a person
+- [ ] On staging, a backup code really resets two-step sign-in (it deletes the user's row in
+      `auth.mfa_factors`; verified on the local stack, not yet on a hosted project)
 - [ ] Database backups on (PITR decided); Storage copy scheduled; one restore drill done
 - [ ] Anthropic data terms confirmed; spend limit set
 - [ ] Broker of record and NJ counsel sign-off on checklist v0 (before AI review is turned on)

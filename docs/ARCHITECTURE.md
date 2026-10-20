@@ -180,3 +180,25 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   environment. Its rules are in `src/lib/ops/health.ts` (unit tested). It
   reports through a heartbeat URL, so a silent host also alerts.
 - The service role key and the Anthropic key exist only on the worker host.
+
+## Members and sign-in recovery (Sprint 004)
+- **Membership writes go only through functions.**
+  - `set_member_role()` and `remove_member()` require an admin of that brokerage at `aal2`.
+  - Neither will leave a brokerage without an admin. They lock the admin rows, so
+    two admins can't demote each other at the same moment.
+  - Direct INSERT/UPDATE/DELETE on `memberships` was revoked. Before this, an admin
+    could write memberships directly under RLS, which skipped the Sprint 003
+    two-step requirement.
+  - A removed member's transactions, documents, reviews and audit history stay
+    with the brokerage; every policy checks membership, so their access ends.
+- **Two-step status for admins:** `member_two_step_status()` (admins only) reads
+  Supabase Auth's `auth.mfa_factors`, which signed-in users can't query.
+- **Backup codes:**
+  - `create_backup_codes()` (`aal2` only) returns ten single-use codes once and
+    stores only their SHA-256, in `private.mfa_backup_codes`.
+  - `use_backup_code()` works from a password-only (`aal1`) session. A valid code
+    deletes the person's rows in `auth.mfa_factors`, so they can enrol a new app.
+  - Wrong codes are recorded, and five in 15 minutes lock the form.
+  - A code never grants `aal2` by itself; the person must set up a new
+    authenticator before doing anything that needs it.
+  - Each use is written to the audit log of every brokerage the person belongs to.
