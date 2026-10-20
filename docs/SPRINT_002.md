@@ -59,6 +59,20 @@ Before turning AI review on for a brokerage with real documents: confirm the
 data agreement with the provider (zero retention / no training), and have the
 broker of record and NJ counsel sign off on checklist v0.
 
+### Live test run (local stack, fictional documents)
+`tests/e2e/live-ai.mjs` creates a fresh fictional brokerage on a running app,
+turns AI review on, uploads three fictional NJ agreements of sale (complete,
+incomplete with blanks, and an image-only "scan"), requests pre-signature
+reviews, then runs `tests/e2e/live-worker.ts`: the real worker pipeline plus
+per-run model time, token usage and list-price cost. It writes
+`test-results/live-ai/report.{md,json}` and the broker's screenshots.
+
+```bash
+export SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=...  # local stack
+export RISE_ANTHROPIC_API_KEY=...   # cloud sessions never receive ANTHROPIC_API_KEY
+node tests/e2e/live-ai.mjs          # --stub checks the harness without a model call
+```
+
 ## Test report
 Run on 2026-10-20 in the build container (Node 22, PostgreSQL 16 for DB tests,
 local Supabase stack with Postgres 17 for E2E):
