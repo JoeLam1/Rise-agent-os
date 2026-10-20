@@ -572,7 +572,9 @@ await step("Admin sees who has two-step sign-in, changes a role and removes a me
 
   await p.getByRole("button", { name: `Remove ${who}` }).click();
   await p.getByRole("button", { name: "Confirm remove" }).click();
-  await p.getByRole("button", { name: `Remove ${who}` }).waitFor({ state: "detached" });
+  // Wait for the row itself to go: the Remove button disappears as soon as
+  // the confirm form opens, before the removal has been saved.
+  await p.getByRole("cell", { name: who, exact: true }).first().waitFor({ state: "detached" });
   await p.goto(`${BASE}/o/${slug}/audit`);
   await p.getByText("membership.removed", { exact: true }).first().waitFor();
 });
