@@ -102,8 +102,8 @@ delete on `audit_log` raise an error for every role.
   roles, default grants, `auth.uid()` and `storage.objects`. Each request runs
   in a transaction with `set local role authenticated` and JWT claims, as
   PostgREST does. This covers RLS, triggers and workflow functions.
-- Not covered by automated tests yet: the Supabase Storage/Auth servers
-  themselves and browser end-to-end flows (needs Docker for `supabase start`).
+- `tests/e2e/walkthrough.mjs` drives the real app in a browser against a local
+  Supabase stack (Auth, PostgREST, Storage) to cover what the shim can't.
 
 ## Sprint 002 seams (NJ AI contract review)
 1. **Engine contract** — `src/lib/analysis/engine.ts` (`ContractAnalysisEngine`)

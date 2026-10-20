@@ -39,7 +39,8 @@ npm run typecheck    # next typegen + tsc
 npm run test:unit    # vitest, src/**/*.test.ts
 npm run test:db      # boots a throwaway Postgres (or uses DATABASE_URL) and runs tests/db
 npm run build
-npx supabase start   # full local Supabase (requires Docker)
+npm run test:e2e     # browser walkthrough against a running app + local Supabase
+npx supabase start   # full local Supabase (requires Docker; in a cloud container start `dockerd` first)
 ```
 
 ## Conventions

@@ -11,7 +11,8 @@
     "test": "npm run test:unit && npm run test:db",
     "test:unit": "vitest run src",
     "test:db": "scripts/with-local-postgres.sh vitest run tests/db",
-    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "test:e2e": "node tests/e2e/walkthrough.mjs"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.17",
@@ -37,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "pg": "^8.23.1",
+    "playwright": "^1.56.1",
     "supabase": "^2.121.0",
     "tailwindcss": "^4",
     "typescript": "^5",

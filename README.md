@@ -49,6 +49,7 @@ confirmation is off in `supabase/config.toml`.
 npm run test:unit   # domain logic
 npm run test:db     # RLS and workflow tests against PostgreSQL
 npm run lint && npm run typecheck && npm run build
+npm run test:e2e    # browser walkthrough; needs `npx supabase start` and the app on :3000
 ```
 `test:db` starts a throwaway PostgreSQL cluster from local binaries (or uses
 `DATABASE_URL`), loads a small Supabase compatibility shim

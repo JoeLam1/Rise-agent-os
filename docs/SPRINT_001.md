@@ -44,7 +44,7 @@ Run on 2026-10-20 in the build container (Node 22, PostgreSQL 16):
 | `npm run test:unit` | 13 / 13 passed |
 | `npm run test:db` | 48 / 48 passed (3 files); also re-run 3× in a row, all green |
 | `npm run build` | Pass (15 routes) |
-| Built app smoke test | `/login` renders (screenshot checked); signed-out requests to `/o/...` pages and the download route redirect to `/login` |
+| `npm run test:e2e` against a local Supabase stack | 16 / 16 steps passed (see below) |
 
 What the DB tests cover:
 - **Cross-tenant access**: another brokerage's broker sees zero rows in all 8
@@ -66,15 +66,34 @@ What the DB tests cover:
   tenants' folders and malformed paths are refused; stored objects can't be
   updated or deleted; the bucket is private; the audit log is append-only.
 
+### End-to-end walkthrough
+`tests/e2e/walkthrough.mjs` drives the built app in Chromium against
+`npx supabase start` (real Supabase Auth, PostgREST, Storage and Postgres 17,
+migrations applied by the CLI) on a freshly reset database. Run on 2026-10-20:
+all 16 steps passed.
+
+1. Admin signs up and creates a brokerage
+2. Broker, agent and a user from another brokerage sign up
+3. Admin adds the broker and agent as members
+4. Agent creates a transaction
+5. Upload refused when a file labelled PDF isn't one
+6. Agent uploads v1, then v2 of a document
+7. Download returns byte-for-byte the uploaded file (SHA-256 matches the one shown)
+8. Agent requests a pre-signature review; the page shows the mock disclaimer and no approve button
+9. A second open pre-signature review on the same version is refused
+10. Broker sees it on the dashboard and in the pre-signature queue
+11. "Request changes" without a note is refused
+12. Broker approves with a note; the decision form is replaced by the recorded decision
+13. Audit log shows organization, membership, transaction, document, version, review, analysis run, ready-for-broker and approved events
+14. Agent is redirected away from the audit log and broker dashboard
+15. The other brokerage's user gets 404 for the org, transaction and review pages, and for the file download
+16. Signed-out visitors are sent to login
+
 ## Not tested yet (known gaps)
-- **End-to-end against a running Supabase stack.** Docker isn't available in the
-  build container, so `supabase start` wasn't run. Auth sign-up/sign-in, real
-  Storage uploads and signed URLs, and PostgREST embedded selects have not been
-  exercised. The DB tests use a shim of Supabase's auth/storage schemas, not the
-  real servers. **First thing to do on a machine with Docker:** `npx supabase
-  start`, then walk through sign-up → create brokerage → add members →
-  transaction → upload → request review → decide.
-- No browser end-to-end tests (Playwright) yet.
+- E2E isn't in CI yet (CI has no Supabase stack); it runs locally with the steps
+  at the top of `tests/e2e/walkthrough.mjs`.
+- Post-execution queue, withdraw, reject and multi-brokerage membership are
+  covered by DB tests but not by the browser walkthrough.
 - If the version-registration call fails after a successful upload, the stored
   object is left orphaned (it is still private and tenant-scoped). Needs a cleanup job.
 - `npm audit` reports 5 high-severity advisories in ESLint's dependency chain
