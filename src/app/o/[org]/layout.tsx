@@ -17,7 +17,12 @@ export default async function OrgLayout({ children, params }: LayoutProps<"/o/[o
     { href: `${base}/queues/pre-signature`, label: "Pre-signature" },
     { href: `${base}/queues/post-execution`, label: "Post-execution" },
     ...(isBrokerOrAdmin(role) ? [{ href: `${base}/audit`, label: "Audit log" }] : []),
-    ...(role === "admin" ? [{ href: `${base}/members`, label: "Members" }] : []),
+    ...(role === "admin"
+      ? [
+          { href: `${base}/members`, label: "Members" },
+          { href: `${base}/settings`, label: "Settings" },
+        ]
+      : []),
   ];
 
   return (

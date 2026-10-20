@@ -18,7 +18,7 @@ export function DecisionForm({ orgSlug, reviewId }: { orgSlug: string; reviewId:
         <Textarea id="note" name="note" maxLength={2000} />
       </Field>
       <p className="text-muted-foreground text-xs">
-        Your decision must be based on your own review of the document. The analysis on this page is a placeholder.
+        Your decision must be based on your own review of the document. Any analysis on this page is a draft aid, not a finding.
       </p>
       <FormMessage state={state} />
       <div className="flex flex-wrap gap-2">

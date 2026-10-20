@@ -56,7 +56,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
           <CardHeader>
             <CardTitle>Analysis</CardTitle>
             <CardDescription>
-              Sprint 001 uses a placeholder engine. The NJ contract review engine replaces it in Sprint 002.
+              A checklist to help the broker read the document. It never approves or rejects anything.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -31,7 +31,7 @@ export const requireOrg = cache(async (slug: string): Promise<OrgContext> => {
   const { supabase, user } = await requireUser();
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, created_at")
+    .select("id, name, slug, ai_review_enabled, created_at")
     .eq("slug", slug)
     .maybeSingle<Organization>();
   if (!org) notFound();

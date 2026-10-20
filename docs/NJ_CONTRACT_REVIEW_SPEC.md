@@ -1,7 +1,7 @@
 # NJ Contract Review — Specification
 
-_Draft v0.1. Sprint 001 ships only the workflow and a placeholder ("mock")
-analysis. This document specifies the Sprint 002 engine. **The NJ checklist
+_Draft v0.2. Sprint 002 implements this spec for text-based PDFs
+(`src/lib/analysis/`); see docs/SPRINT_002.md for what is and isn't built. **The NJ checklist
 below is a starting point written by engineering and must be validated by RISE's
 broker of record and New Jersey counsel before any engine output is shown to
 brokers as more than a draft.** Nothing in this document is legal advice._
@@ -67,7 +67,7 @@ IDs are stable and already used by the Sprint 001 mock.
 | `nj.attorney_review_period` | Attorney review period start and end recorded | Engine extracts dates if present; it does not compute legal deadlines. |
 | `exec.deposit_receipt` | Deposit receipt documented | |
 | `exec.deadlines_calendared` | Contingency deadlines calendared | Extract dates for the broker; no automatic calendaring. |
-| `exec.changes_since_presignature` | Changes since pre-signature review identified | Compare against the latest approved pre-signature version of the same document, if any. |
+| `exec.changes_since_presignature` | Changes since pre-signature review identified | Compare against the latest approved pre-signature version of the same document, if any. **Not built yet: always `not_evaluated`.** |
 
 ## 5. Processing pipeline (Sprint 002)
 1. `request_review()` inserts the review (`pending_analysis`) and a `queued` run.
@@ -83,6 +83,8 @@ IDs are stable and already used by the Sprint 001 mock.
 ## 6. Privacy and security
 - Documents contain client personal data. Only the worker reads them, server-side.
 - Model provider must be configured for zero data retention / no training on inputs.
+  This is an account-level agreement with the provider; the code can't enforce
+  it. Confirm it before an admin turns AI review on.
 - Prompts and outputs are stored only in `analysis_runs`, scoped by org with RLS.
 - No document content in application logs.
 

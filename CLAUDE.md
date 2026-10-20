@@ -13,8 +13,8 @@ brokerages. Product context: `docs/PRD.md`. System design: `docs/ARCHITECTURE.md
   table has `org_id`, RLS enabled, and composite `(org_id, id)` foreign keys.
   New tables follow the same pattern and get cross-tenant tests in `tests/db`.
 - **The app uses only the publishable key plus the user's session.** No
-  service-role key in request paths. Background workers (Sprint 002+) are the
-  only place a service credential may be used, server-side.
+  service-role key in request paths. The analysis worker (`scripts/analysis-worker.ts`)
+  is the only place a service credential or AI provider key may be used.
 - **Compliance writes go through `security definer` functions** (`add_document_version`,
   `request_review`, `decide_review`, `withdraw_review`). Clients have no direct
   INSERT/UPDATE on `document_versions`, `reviews`, `analysis_runs`, `audit_log`.
@@ -23,7 +23,8 @@ brokerages. Product context: `docs/PRD.md`. System design: `docs/ARCHITECTURE.md
 - **No live legal actions.** The software never sends, signs, files or
   transmits anything to a party outside the brokerage.
 - **No fictional results.** Mock analysis must say it is mock, evaluate nothing,
-  and never produce a finding or approval. Only a human broker approves.
+  and never produce a finding or approval. AI results show only quotes verified
+  against the document text and are labelled as a draft. Only a human broker approves.
 - **No real client data** in code, fixtures, seeds, tests, screenshots or docs.
   Use obviously fictional names and `*.test` emails.
 - **Independent from Pulse.** Do not import, copy, call or share infrastructure
@@ -40,6 +41,7 @@ npm run test:unit    # vitest, src/**/*.test.ts
 npm run test:db      # boots a throwaway Postgres (or uses DATABASE_URL) and runs tests/db
 npm run build
 npm run test:e2e     # browser walkthrough against a running app + local Supabase
+npm run worker       # AI review worker (server-side; needs service key + ANTHROPIC_API_KEY)
 npx supabase start   # full local Supabase (requires Docker; in a cloud container start `dockerd` first)
 ```
 

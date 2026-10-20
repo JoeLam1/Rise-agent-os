@@ -4,10 +4,11 @@ A multi-tenant operating platform for real estate agents and brokers. The first
 customer is RISE Real Estate Partners in New Jersey; the platform is built to
 serve many independent brokerages, each isolated from the others.
 
-**Status: Sprint 001 (foundation). Not production-ready.** Contract analysis is
-a labelled placeholder; the NJ contract review engine is Sprint 002. See
-[`docs/SPRINT_001.md`](docs/SPRINT_001.md) for what was built, what was tested,
-and the known gaps.
+**Status: Sprint 002 (AI contract review, draft). Not production-ready.** The NJ
+AI checklist is built and tested with a stubbed model, but has not yet been run
+against a live model or validated by the broker of record and NJ counsel. See
+[`docs/SPRINT_002.md`](docs/SPRINT_002.md) and [`docs/SPRINT_001.md`](docs/SPRINT_001.md)
+for what was built, what was tested, and the known gaps.
 
 ## What Sprint 001 includes
 - Email/password auth (Supabase Auth), brokerages (organizations), and roles:
@@ -21,13 +22,22 @@ and the known gaps.
   state machine, a no-self-approval rule, and an append-only audit log.
 - Database tests for cross-tenant access, unauthorized approvals and document security.
 
+## What Sprint 002 adds
+- Opt-in AI contract review per brokerage (admin **Settings**), for text-based PDFs.
+- A background worker (`npm run worker`) that analyzes queued reviews against the
+  draft NJ checklist with Claude, verifies every quote against the PDF text, and
+  hands the review to the broker whether analysis succeeds or fails.
+- Evidence quotes with page numbers in the review screen, under a "draft, not a
+  decision" notice.
+
 ## Docs
 | Doc | What it covers |
 | --- | --- |
 | [`docs/PRD.md`](docs/PRD.md) | Product requirements |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design, tenancy and security model, Sprint 002 seams |
-| [`docs/NJ_CONTRACT_REVIEW_SPEC.md`](docs/NJ_CONTRACT_REVIEW_SPEC.md) | Spec for the NJ contract review engine (Sprint 002) |
-| [`docs/SPRINT_001.md`](docs/SPRINT_001.md) | Sprint plan, delivery and test report |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design, tenancy and security model, AI review pipeline |
+| [`docs/NJ_CONTRACT_REVIEW_SPEC.md`](docs/NJ_CONTRACT_REVIEW_SPEC.md) | Behavior contract and checklist for the NJ contract review engine |
+| [`docs/SPRINT_001.md`](docs/SPRINT_001.md) | Sprint 001 plan, delivery and test report |
+| [`docs/SPRINT_002.md`](docs/SPRINT_002.md) | Sprint 002 plan, delivery, test report and how to run the worker |
 | [`CLAUDE.md`](CLAUDE.md) | Engineering rules for anyone (human or AI) working in this repo |
 
 ## Running locally

@@ -1,6 +1,6 @@
 # Architecture — RISE Agent OS
 
-_Sprint 001. Describes what is built; Sprint 002 seams are called out at the end._
+_Describes what is built through Sprint 002. The AI review section is at the end._
 
 ## Overview
 ```
@@ -39,7 +39,7 @@ what to render.
 | documents | Logical document within a transaction | insert/update title, kind; no delete |
 | document_versions | Immutable file versions (path, sha256, size, mime) | `add_document_version()` only |
 | reviews | Pre-signature / post-execution review of one version | `request_review()`, `decide_review()`, `withdraw_review()` only |
-| analysis_runs | Engine output per review (`engine`, `is_mock`, `result` JSON) | none (written by functions / Sprint 002 worker) |
+| analysis_runs | Engine output per review (`engine`, `is_mock`, `status`, `result` JSON) | none (written by functions and the service-role worker) |
 | audit_log | Append-only event log | none (written by triggers) |
 
 ## Access rules (enforced by RLS)
@@ -105,20 +105,45 @@ delete on `audit_log` raise an error for every role.
 - `tests/e2e/walkthrough.mjs` drives the real app in a browser against a local
   Supabase stack (Auth, PostgREST, Storage) to cover what the shim can't.
 
-## Sprint 002 seams (NJ AI contract review)
-1. **Engine contract** — `src/lib/analysis/engine.ts` (`ContractAnalysisEngine`)
-   and the result schema `src/lib/analysis/schema.ts` (`schema_version: 1`, with
-   optional `evidence` and `note` per item already defined).
-2. **Asynchronous runs** — `analysis_runs.status` already supports
-   `queued → running → completed | failed`, and reviews already support
-   `pending_analysis`. Sprint 002 changes `request_review()` to queue a run
-   instead of completing a mock, and a worker moves the review to
-   `ready_for_broker` when the run completes or fails.
-3. **Worker** — server-only (Supabase Edge Function or a Node worker) using a
-   service credential to read the private file and write `analysis_runs` with
-   `engine = 'nj_contract_ai'`. It verifies the SHA-256 before analysis.
-4. **Provenance** — each run stores `engine_version`; the UI already shows engine,
-   version and a mock badge. Re-runs append new rows; nothing is overwritten.
-5. **Guardrails** — the database keeps the human-decision rule regardless of
-   engine output; the UI keeps the "your decision must be based on your own
-   review" notice.
+## AI contract review (Sprint 002)
+```
+request_review() ──► analysis_runs: queued ──► worker claims: running ──► completed ─┐
+  (AI on + PDF)       review: pending_analysis                       └──► failed ────┤
+                                                                                     ▼
+                                              review: ready_for_broker (broker decides either way)
+```
+- **Opt-in per brokerage.** `organizations.ai_review_enabled`, switched only by
+  an admin through `set_ai_review()` (audited as `organization.ai_review_enabled`
+  / `_disabled`). While off, or for non-PDF files, `request_review()` keeps the
+  Sprint 001 mock path.
+- **Worker** (`scripts/analysis-worker.ts`, `npm run worker`) is a separate Node
+  process. It is the only code that holds `SUPABASE_SERVICE_ROLE_KEY` and
+  `ANTHROPIC_API_KEY`; the Next.js app still uses only the publishable key.
+  Per run it calls `claim_analysis_run()` (`for update skip locked`), downloads
+  the file from private Storage, checks size and SHA-256 against
+  `document_versions`, runs the engine, then `complete_analysis_run()` or
+  `fail_analysis_run()`. Logs carry run ids and error classes, never document text.
+- **Worker RPCs are `service_role` only.** No signed-in user can claim a run or
+  write a result. `complete_analysis_run()` refuses results that claim to be
+  mock, come from another engine version, or lack an items array.
+- **Run lifecycle trigger** (`analysis_runs_guard`) allows only
+  `queued → running → completed | failed` (plus `queued → failed` and a stale
+  `running` reclaim) and makes finished runs immutable for every role.
+- **Crash recovery.** A run left `running` for 15 minutes is reclaimed, up to 3
+  attempts, then failed so the review still reaches the broker. Withdrawing a
+  review fails its queued run.
+- **Broker decision** requires analysis to have finished (completed or failed).
+  A failed run shows the reason and the broker reviews the document unaided.
+- **Engine** (`src/lib/analysis/nj-engine.ts`): extracts page text with
+  `unpdf`, refuses PDFs with no text layer or over 100 pages, sends the PDF to
+  Claude (`claude-opus-5-5`, adaptive thinking, effort `high`, JSON-schema
+  structured output) with checklist v0 (`src/lib/analysis/checklist.ts`).
+  Server-side refusal fallback is enabled (`fallbacks: "default"`), so if the
+  primary model declines the API retries on its default fallback model; a
+  refusal from the whole chain fails the run.
+- **Quote verification** (`src/lib/analysis/verify.ts`): every quote must be
+  found in the extracted text (whitespace, ligature, quote-mark and case
+  insensitive) or it is dropped; `present` / `needs_attention` items left with no
+  verified quote become `not_evaluated`. The stored result records how many
+  quotes were returned and verified.
+

@@ -51,3 +51,12 @@ export async function addMember(orgSlug: string, _prev: ActionState, formData: F
   revalidatePath(`/o/${orgSlug}/members`);
   return { message: `Added ${parsed.data.email}.` };
 }
+
+export async function setAiReview(orgSlug: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const enabled = formData.get("enabled") === "true";
+  const { supabase, org } = await requireAdmin(orgSlug);
+  const { error } = await supabase.rpc("set_ai_review", { p_org: org.id, p_enabled: enabled });
+  if (error) return { error: friendlyDbError(error) };
+  revalidatePath(`/o/${orgSlug}`, "layout");
+  return { message: enabled ? "AI review is on for new review requests." : "AI review is off. New requests use the mock." };
+}
