@@ -42,5 +42,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Signed in with a password but the account has an authenticator app: finish
+  // two-step sign-in before anything else. (The database enforces aal2 for the
+  // actions that need it; this keeps the UI from showing a half-signed-in state.)
+  if (user && !isPublic) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+      const verifyUrl = request.nextUrl.clone();
+      verifyUrl.pathname = "/login/verify";
+      verifyUrl.search = "";
+      verifyUrl.searchParams.set("next", path);
+      return NextResponse.redirect(verifyUrl);
+    }
+  }
+
   return response;
 }

@@ -43,7 +43,13 @@ create function auth.role() returns text language sql stable as $$
     (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')
   )::text
 $$;
-grant execute on function auth.uid(), auth.role() to anon, authenticated, service_role;
+create function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim', true), ''),
+    nullif(current_setting('request.jwt.claims', true), '')
+  )::jsonb
+$$;
+grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authenticated, service_role;
 
 create table storage.buckets (
   id text primary key,

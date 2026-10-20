@@ -18,7 +18,13 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: "Email or password is incorrect." };
-  redirect(safeNext(formData.get("next")));
+  const next = safeNext(formData.get("next"));
+  // Accounts with an authenticator app finish signing in with a code.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+    redirect(`/login/verify?next=${encodeURIComponent(next)}`);
+  }
+  redirect(next);
 }
 
 export async function signUp(_prev: ActionState, formData: FormData): Promise<ActionState> {
