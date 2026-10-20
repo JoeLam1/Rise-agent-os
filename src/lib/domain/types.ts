@@ -21,7 +21,13 @@ export type ReviewState =
   | "rejected"
   | "withdrawn";
 
-export type Organization = { id: string; name: string; slug: string; created_at: string };
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+  ai_review_enabled: boolean;
+  created_at: string;
+};
 
 export type Membership = { id: string; org_id: string; user_id: string; role: OrgRole; created_at: string };
 
@@ -90,7 +96,9 @@ export type AnalysisRun = {
   status: "queued" | "running" | "completed" | "failed";
   result: unknown;
   error: string | null;
+  attempts: number;
   created_at: string;
+  started_at: string | null;
   completed_at: string | null;
 };
 

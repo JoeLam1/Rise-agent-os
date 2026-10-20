@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "worker": "tsx --tsconfig tsconfig.json scripts/analysis-worker.ts",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "npm run test:unit && npm run test:db",
@@ -15,6 +16,7 @@
     "test:e2e": "node tests/e2e/walkthrough.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-slot": "^1.5.0",
     "@supabase/ssr": "^0.12.7",
@@ -27,6 +29,7 @@
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
+    "unpdf": "^1.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -41,6 +44,7 @@
     "playwright": "^1.56.1",
     "supabase": "^2.121.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
   }

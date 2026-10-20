@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createOrganization, addMember } from "@/app/actions/orgs";
+import { createOrganization, addMember, setAiReview } from "@/app/actions/orgs";
 import { initialActionState } from "@/app/actions/state";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -39,6 +39,21 @@ export function AddMemberForm({ orgSlug }: { orgSlug: string }) {
       </Field>
       <SubmitButton pendingText="Adding…">Add member</SubmitButton>
       <FormMessage state={state} className="sm:col-span-3" />
+    </form>
+  );
+}
+
+export function AiReviewForm({ orgSlug, enabled }: { orgSlug: string; enabled: boolean }) {
+  const [state, action] = useActionState(setAiReview.bind(null, orgSlug), initialActionState);
+  return (
+    <form action={action} className="grid gap-3">
+      <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />
+      <div>
+        <SubmitButton pendingText="Saving…" variant={enabled ? "outline" : "default"}>
+          {enabled ? "Turn off AI review" : "Turn on AI review"}
+        </SubmitButton>
+      </div>
+      <FormMessage state={state} />
     </form>
   );
 }

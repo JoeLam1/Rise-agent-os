@@ -1,13 +1,19 @@
-// End-to-end walkthrough of Sprint 001 against a running app and a local
-// Supabase stack. All people, addresses and files are fictional.
+// End-to-end walkthrough against a running app and a local Supabase stack.
+// All people, addresses and files are fictional.
 //
 //   npx supabase start && npx supabase db reset   # fresh, empty database
 //   npm run build && npm start                    # app on :3000 with .env.local
 //   npm run test:e2e                              # screenshots -> test-results/e2e
 //
+// The AI review steps also need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for
+// the local stack (from `npx supabase status`); they run tests/e2e/stub-worker.ts,
+// which uses the real worker pipeline with a stubbed model call. Without those
+// variables the AI steps are reported as SKIP.
+//
 // Uses the repo's playwright dependency; set CHROMIUM_PATH to reuse a local
 // browser instead of `npx playwright install chromium`.
 import { chromium } from "playwright";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +23,8 @@ const OUT = process.env.E2E_OUT ?? "test-results/e2e";
 mkdirSync(OUT, { recursive: true });
 
 function samplePdf(text) {
-  const stream = `BT /F1 18 Tf 72 720 Td (${text}) Tj ET`;
+  const lines = Array.isArray(text) ? text : [text];
+  const stream = `BT /F1 12 Tf 16 TL 72 720 Td ${lines.map((l) => `(${l}) Tj T*`).join(" ")} ET`;
   const objs = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -41,6 +48,19 @@ const DIR = OUT;
 writeFileSync(join(OUT, "contract-v1.pdf"), samplePdf("SAMPLE PURCHASE AGREEMENT v1 - FICTIONAL TEST DATA"));
 writeFileSync(join(OUT, "contract-v2.pdf"), samplePdf("SAMPLE PURCHASE AGREEMENT v2 - FICTIONAL TEST DATA"));
 writeFileSync(join(OUT, "fake.pdf"), "<html>not a pdf</html>");
+writeFileSync(
+  join(OUT, "ai-contract.pdf"),
+  samplePdf([
+    "AGREEMENT OF SALE - FICTIONAL TEST DOCUMENT",
+    "Buyer: Pat Example. Seller: Sam Sample.",
+    "Property: 20 Example Lane, Sampletown, NJ. Block 1 Lot 2.",
+    "Purchase price: $500,000. Initial deposit: $5,000.",
+    "Closing date: ________",
+    "ATTORNEY REVIEW: Study by Attorney. The Buyer or the Seller may choose to have an",
+    "attorney study this contract within a three-day period.",
+  ]),
+);
+writeFileSync(join(OUT, "no-text.pdf"), samplePdf([""]));
 const results = [];
 let n = 0;
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -248,7 +268,110 @@ await step("Signed-out visitor is sent to login", async () => {
   expect(p.url().includes("/login"), `landed on ${p.url()}`);
 });
 
+// ---------------------------------------------------------------------------
+// Sprint 002: AI review (model call stubbed; see tests/e2e/stub-worker.ts)
+// ---------------------------------------------------------------------------
+const canRunWorker = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+function runStubWorker() {
+  return execFileSync("npx", ["tsx", "--tsconfig", "tsconfig.json", "tests/e2e/stub-worker.ts"], {
+    env: process.env,
+    encoding: "utf8",
+  });
+}
+async function aiStep(name, fn) {
+  if (!canRunWorker) {
+    results.push(["SKIP", name, "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set"]);
+    console.log("SKIP", name);
+    return;
+  }
+  await step(name, fn);
+}
+async function newTransactionWithPdf(p, address, file) {
+  await p.goto(`${BASE}/o/${slug}/transactions/new`);
+  await p.getByLabel("Property address").fill(address);
+  await p.getByLabel("Representing").selectOption("buyer");
+  await p.getByRole("button", { name: "Create transaction" }).click();
+  await p.waitForURL(/\/transactions\/[0-9a-f-]{36}$/);
+  await p.getByLabel("Title").fill("Agreement of sale");
+  await p.locator('input[name="file"]').last().setInputFiles(`${DIR}/${file}`);
+  await p.getByRole("button", { name: "Upload document" }).click();
+  await p.getByText(`Uploaded ${file}.`).waitFor();
+  await p.reload();
+  await p.getByRole("button", { name: "Request pre-signature review" }).click();
+  await p.waitForURL(/\/reviews\/[0-9a-f-]{36}$/);
+  return p.url();
+}
+
+await aiStep("Only an admin sees Settings; admin turns on AI review", async () => {
+  await agent.page.goto(`${BASE}/o/${slug}/settings`);
+  expect(!agent.page.url().endsWith("/settings"), "agent reached settings");
+  const p = admin.page;
+  await p.goto(`${BASE}/o/${slug}/settings`);
+  await p.getByRole("button", { name: "Turn on AI review" }).click();
+  await p.getByText("AI review is on for new review requests.").waitFor();
+  await shot(p, "settings-ai-on");
+});
+
+let aiReviewUrl;
+await aiStep("A PDF review waits for analysis and can't be decided yet", async () => {
+  aiReviewUrl = await newTransactionWithPdf(agent.page, "20 Example Lane", "ai-contract.pdf");
+  await agent.page.getByText("Analyzing the document…").waitFor();
+  await shot(agent.page, "ai-review-analyzing");
+  await broker.page.goto(aiReviewUrl);
+  await broker.page.getByText("Analyzing the document…").waitFor();
+  expect((await broker.page.getByRole("button", { name: "Approve" }).count()) === 0, "broker can approve before analysis");
+});
+
+await aiStep("Worker analyzes it; the page shows the draft checklist with verified quotes only", async () => {
+  const out = runStubWorker();
+  expect(/-> completed/.test(out), `worker output: ${out}`);
+  const p = agent.page; // still on the review page; AutoRefresh picks up the result
+  await p.getByText("Draft AI checklist, not a decision").waitFor({ timeout: 20000 });
+  await p.getByText("ATTORNEY REVIEW: Study by Attorney.").waitFor();
+  await p.getByText("· page 1").first().waitFor();
+  expect((await p.getByText("Exhibit Z").count()) === 0, "unverified quote was shown");
+  await p.getByText(/2 of 3 quotes were found/).waitFor();
+  await p.getByText("stub-model-for-tests", { exact: false }).waitFor();
+  await shot(p, "ai-review-result");
+});
+
+await aiStep("Broker approves the AI-reviewed document with a note", async () => {
+  const p = broker.page;
+  await p.goto(aiReviewUrl);
+  await p.getByLabel("Decision note").fill("Read the document myself. Fictional test approval.");
+  await p.getByRole("button", { name: "Approve" }).click();
+  await p.getByText(/by Bo Demo-Broker on/).waitFor();
+  await shot(p, "ai-review-approved");
+});
+
+await aiStep("A PDF with no text fails analysis but still reaches the broker", async () => {
+  const url = await newTransactionWithPdf(agent.page, "30 Example Lane", "no-text.pdf");
+  const out = runStubWorker();
+  expect(/-> failed/.test(out), `worker output: ${out}`);
+  const p = broker.page;
+  await p.goto(url);
+  await p.getByText("No AI analysis for this version").waitFor();
+  await p.getByText(/little or no text layer/).waitFor();
+  await shot(p, "ai-review-failed");
+  await p.getByLabel("Decision note").fill("Scanned copy; please upload a text PDF.");
+  await p.getByRole("button", { name: "Request changes" }).click();
+  await p.getByText(/by Bo Demo-Broker on/).waitFor();
+});
+
+await aiStep("Audit log records the AI switch and the run lifecycle", async () => {
+  const p = broker.page;
+  await p.goto(`${BASE}/o/${slug}/audit`);
+  for (const a of ["organization.ai_review_enabled", "analysis_run.updated"]) {
+    expect((await p.getByText(a, { exact: true }).count()) > 0, `missing ${a}`);
+  }
+});
+
 await browser.close();
-console.log("\nSUMMARY", results.filter((r) => r[0] === "PASS").length, "passed,", results.filter((r) => r[0] === "FAIL").length, "failed");
+console.log(
+  "\nSUMMARY",
+  results.filter((r) => r[0] === "PASS").length, "passed,",
+  results.filter((r) => r[0] === "FAIL").length, "failed,",
+  results.filter((r) => r[0] === "SKIP").length, "skipped",
+);
 for (const r of results) console.log(r.join(" | "));
 process.exitCode = results.some((r) => r[0] === "FAIL") ? 1 : 0;

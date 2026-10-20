@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * Shape of `analysis_runs.result`. Sprint 001 only produces mock results
- * (every item `not_evaluated`). Sprint 002's NJ contract engine fills the
- * same shape with real statuses, evidence and citations.
+ * Shape of `analysis_runs.result`. Mock results (every item
+ * `not_evaluated`) and the NJ contract engine (src/lib/analysis/nj-engine.ts)
+ * share it; the engine adds verified evidence quotes.
  */
 export const analysisItemStatus = z.enum([
   "not_evaluated",
@@ -34,6 +34,16 @@ export const analysisResultSchema = z.object({
   disclaimer: z.string().min(1),
   summary: z.string(),
   items: z.array(analysisItemSchema),
+  // AI runs only: which model answered and how many quotes survived checking.
+  model: z.string().optional(),
+  checklist_version: z.string().optional(),
+  verification: z
+    .object({
+      quotes_returned: z.number().int().nonnegative(),
+      quotes_verified: z.number().int().nonnegative(),
+      items_downgraded: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
@@ -47,6 +57,8 @@ export function parseAnalysisResult(value: unknown): AnalysisResult | null {
   if (parsed.data.engine === "mock") {
     if (!parsed.data.is_mock) return null;
     if (parsed.data.items.some((i) => i.status !== "not_evaluated")) return null;
+  } else if (parsed.data.is_mock) {
+    return null;
   }
   return parsed.data;
 }
