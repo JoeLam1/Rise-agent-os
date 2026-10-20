@@ -1,0 +1,7 @@
+node_modules
+.next
+.env*
+!.env.example
+test-results
+supabase/.temp
+.git

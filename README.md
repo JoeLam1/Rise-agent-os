@@ -4,9 +4,13 @@ A multi-tenant operating platform for real estate agents and brokers. The first
 customer is RISE Real Estate Partners in New Jersey; the platform is built to
 serve many independent brokerages, each isolated from the others.
 
-**Status: Sprint 002 (AI contract review, draft). Not production-ready.** The NJ
-AI checklist is built and tested with a stubbed model, but has not yet been run
-against a live model or validated by the broker of record and NJ counsel. See
+**Status: Sprint 003 (ready for a pilot, not yet deployed). Not production-ready.**
+Accounts, invitations, password reset and two-step sign-in are built and tested
+end to end against a local Supabase stack, and CI runs that walkthrough on every
+change. Nothing has been deployed to hosted infrastructure yet; the steps are in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). The NJ AI checklist has had one small
+live run on fictional contracts but has not been validated by the broker of
+record and NJ counsel. See [`docs/SPRINT_003.md`](docs/SPRINT_003.md),
 [`docs/SPRINT_002.md`](docs/SPRINT_002.md) and [`docs/SPRINT_001.md`](docs/SPRINT_001.md)
 for what was built, what was tested, and the known gaps.
 
@@ -30,6 +34,15 @@ for what was built, what was tested, and the known gaps.
 - Evidence quotes with page numbers in the review screen, under a "draft, not a
   decision" notice.
 
+## What Sprint 003 adds
+- Email invitations: admins invite any address, and people join once they confirm it.
+- Password reset by email, and a set-password page.
+- Two-step sign-in (authenticator app) that brokers and admins need for
+  decisions and admin actions, enforced in the database.
+- The browser walkthrough runs in CI against a local Supabase stack.
+- A deployment guide, a worker container image and a health check with
+  heartbeat alerting.
+
 ## Docs
 | Doc | What it covers |
 | --- | --- |
@@ -38,6 +51,8 @@ for what was built, what was tested, and the known gaps.
 | [`docs/NJ_CONTRACT_REVIEW_SPEC.md`](docs/NJ_CONTRACT_REVIEW_SPEC.md) | Behavior contract and checklist for the NJ contract review engine |
 | [`docs/SPRINT_001.md`](docs/SPRINT_001.md) | Sprint 001 plan, delivery and test report |
 | [`docs/SPRINT_002.md`](docs/SPRINT_002.md) | Sprint 002 plan, delivery, test report and how to run the worker |
+| [`docs/SPRINT_003.md`](docs/SPRINT_003.md) | Sprint 003 plan, delivery and test report |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Hosted Supabase, Vercel, worker host, backups, alerts, account recovery |
 | [`CLAUDE.md`](CLAUDE.md) | Engineering rules for anyone (human or AI) working in this repo |
 
 ## Running locally

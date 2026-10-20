@@ -13,8 +13,9 @@ brokerages. Product context: `docs/PRD.md`. System design: `docs/ARCHITECTURE.md
   table has `org_id`, RLS enabled, and composite `(org_id, id)` foreign keys.
   New tables follow the same pattern and get cross-tenant tests in `tests/db`.
 - **The app uses only the publishable key plus the user's session.** No
-  service-role key in request paths. The analysis worker (`scripts/analysis-worker.ts`)
-  is the only place a service credential or AI provider key may be used.
+  service-role key in request paths. Service credentials and the AI provider key
+  live only on the worker host: the analysis worker (`scripts/analysis-worker.ts`)
+  and its read-only health check (`scripts/health-check.ts`).
 - **Compliance writes go through `security definer` functions** (`add_document_version`,
   `request_review`, `decide_review`, `withdraw_review`). Clients have no direct
   INSERT/UPDATE on `document_versions`, `reviews`, `analysis_runs`, `audit_log`.
@@ -42,6 +43,7 @@ npm run test:db      # boots a throwaway Postgres (or uses DATABASE_URL) and run
 npm run build
 npm run test:e2e     # browser walkthrough against a running app + local Supabase
 npm run worker       # AI review worker (server-side; needs service key + RISE_ANTHROPIC_API_KEY)
+npm run health       # production health check (worker host; exits 1 on a problem)
 npx supabase start   # full local Supabase (requires Docker; in a cloud container start `dockerd` first)
 ```
 

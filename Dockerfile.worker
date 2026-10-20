@@ -1,0 +1,16 @@
+# AI review worker. Runs separately from the web app, with its own secrets:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RISE_ANTHROPIC_API_KEY
+# Build:  docker build -f Dockerfile.worker -t rise-worker .
+# Run:    docker run --env-file worker.env rise-worker
+# Health: docker run --env-file worker.env rise-worker npx tsx --tsconfig tsconfig.json scripts/health-check.ts
+FROM node:22-slim
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+COPY package.json package-lock.json ./
+# tsx (a dev dependency) runs the TypeScript worker directly.
+RUN npm ci --include=dev --ignore-scripts && npm cache clean --force
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts ./scripts
+USER node
+CMD ["npx", "tsx", "--tsconfig", "tsconfig.json", "scripts/analysis-worker.ts"]

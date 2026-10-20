@@ -147,3 +147,36 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   verified quote become `not_evaluated`. The stored result records how many
   quotes were returned and verified.
 
+
+## Accounts, invitations and two-step sign-in (Sprint 003)
+- **Email confirmation is required.** Supabase Auth must have "Confirm email"
+  on (it is in `supabase/config.toml`). Every emailed link (confirm, invite, reset)
+  carries a `token_hash` to `/auth/confirm`, which calls `verifyOtp` on the server,
+  sets the session cookie and redirects with a relative `Location`.
+- **Invitations** (`public.invitations`, admin-readable, no client writes,
+  immutable once accepted or revoked, audited):
+  - `invite_member()` adds an existing *confirmed* account at once.
+  - Otherwise it stores an invitation, and the app asks Auth to email a link
+    (`signInWithOtp` from a sessionless publishable-key client).
+  - The trigger `on_auth_user_email_confirmed` turns open, unexpired invitations
+    for that address into memberships when the address is confirmed.
+  - Signing up with an invited address you can't read gets you nothing.
+- **Two-step sign-in (TOTP):**
+  - `private.require_aal2()` checks `auth.jwt() ->> 'aal'`.
+  - It's called by `decide_review`, `set_ai_review`, `add_org_member`,
+    `invite_member` and `revoke_invitation`, after their role checks, so
+    outsiders still see the ordinary refusal.
+  - In the app:
+    - `/account/security` enrols an authenticator app.
+    - `signIn` and `proxy.ts` send password-only sessions of enrolled users to
+      `/login/verify`.
+    - Brokers and admins at `aal1` see a banner.
+  - All of that is convenience; the database is the boundary.
+
+## Operations (Sprint 003)
+- Production layout, secrets and backups: `docs/DEPLOYMENT.md`.
+- The worker ships as a container (`Dockerfile.worker`).
+- `scripts/health-check.ts` runs on the worker host, with the worker's
+  environment. Its rules are in `src/lib/ops/health.ts` (unit tested). It
+  reports through a heartbeat URL, so a silent host also alerts.
+- The service role key and the Anthropic key exist only on the worker host.
