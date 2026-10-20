@@ -1,16 +1,32 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { signIn, signUp } from "@/app/actions/auth";
+import { requestPasswordReset, signIn, signUp } from "@/app/actions/auth";
 import { initialActionState } from "@/app/actions/state";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, FormMessage, SubmitButton } from "@/components/forms/form-bits";
 
 export function AuthForms({ next }: { next?: string }) {
-  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [mode, setMode] = useState<"sign-in" | "sign-up" | "forgot">("sign-in");
   const [signInState, signInAction] = useActionState(signIn, initialActionState);
   const [signUpState, signUpAction] = useActionState(signUp, initialActionState);
+  const [resetState, resetAction] = useActionState(requestPasswordReset, initialActionState);
+
+  if (mode === "forgot") {
+    return (
+      <form action={resetAction} className="grid gap-4">
+        <Field label="Email" htmlFor="email" hint="We'll email you a link to choose a new password.">
+          <Input id="email" name="email" type="email" autoComplete="email" required />
+        </Field>
+        <FormMessage state={resetState} />
+        <SubmitButton pendingText="Sending…">Send reset link</SubmitButton>
+        <Button type="button" variant="link" onClick={() => setMode("sign-in")}>
+          Back to sign in
+        </Button>
+      </form>
+    );
+  }
 
   return mode === "sign-in" ? (
     <form action={signInAction} className="grid gap-4">
@@ -23,6 +39,9 @@ export function AuthForms({ next }: { next?: string }) {
       </Field>
       <FormMessage state={signInState} />
       <SubmitButton pendingText="Signing in…">Sign in</SubmitButton>
+      <Button type="button" variant="link" onClick={() => setMode("forgot")}>
+        Forgot your password?
+      </Button>
       <Button type="button" variant="link" onClick={() => setMode("sign-up")}>
         New here? Create an account
       </Button>

@@ -1,0 +1,7 @@
+{{ if .Data.invited_to_rise }}<h2>You've been invited to RISE Agent OS</h2>
+<p>Your brokerage added this email address to RISE Agent OS. Open the link to join and choose a password.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/account/password">Accept the invitation</a></p>
+{{ else }}<h2>Confirm your RISE Agent OS account</h2>
+<p>Confirm your email address to finish creating your account.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/orgs">Confirm my email</a></p>
+{{ end }}<p>This link works once and expires in an hour. If you weren't expecting it, ignore this email.</p>

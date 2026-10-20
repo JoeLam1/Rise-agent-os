@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
-import { listMembers, displayName } from "@/lib/data/queries";
+import { listMembers, listOpenInvitations, displayName } from "@/lib/data/queries";
+import { revokeInvitation } from "@/app/actions/orgs";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,19 +16,56 @@ export const metadata: Metadata = { title: "Members" };
 export default async function MembersPage({ params }: PageProps<"/o/[org]/members">) {
   const { org: slug } = await params;
   const { supabase, org } = await requireAdmin(slug);
-  const members = await listMembers(supabase, org.id);
+  const [members, invitations] = await Promise.all([listMembers(supabase, org.id), listOpenInvitations(supabase, org.id)]);
 
   return (
     <>
       <PageHeader title="Members" description="Who can access this brokerage, and in what role." />
       <Card>
         <CardHeader>
-          <CardTitle>Add a member</CardTitle>
+          <CardTitle>Add or invite a member</CardTitle>
         </CardHeader>
         <CardContent>
           <AddMemberForm orgSlug={slug} />
         </CardContent>
       </Card>
+      {invitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending invitations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitations.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell>{inv.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{ROLE_LABELS[inv.role as OrgRole]}</Badge>
+                    </TableCell>
+                    <TableCell>{formatDateTime(inv.expires_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <form action={revokeInvitation.bind(null, slug, inv.id)}>
+                        <Button type="submit" variant="outline" size="sm" aria-label={`Revoke invitation for ${inv.email}`}>
+                          Revoke
+                        </Button>
+                      </form>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardContent>
           <Table>

@@ -82,6 +82,24 @@ async function shot(page, label) {
 function expect(cond, msg) {
   if (!cond) throw new Error(msg);
 }
+// Emails (sign-up confirmation, invitations, password reset) are read from the
+// local stack's Mailpit; nothing leaves the machine.
+const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
+async function emailLink(to, since) {
+  for (let i = 0; i < 40; i += 1) {
+    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
+    const list = res.ok ? await res.json() : { messages: [] };
+    const msg = (list.messages ?? []).find((m) => new Date(m.Created) >= since);
+    if (msg) {
+      const body = await (await fetch(`${MAILPIT}/api/v1/message/${msg.ID}`)).json();
+      const href = /href="([^"]*\/auth\/confirm\?[^"]+)"/.exec(body.HTML ?? "")?.[1];
+      expect(href, `no /auth/confirm link in the email to ${to}`);
+      return href.replaceAll("&amp;", "&");
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`no email to ${to} arrived`);
+}
 async function newUser(name, email) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
   const page = await ctx.newPage();
@@ -90,7 +108,10 @@ async function newUser(name, email) {
   await page.getByLabel("Full name").fill(name);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("fictional-pass-123");
+  const since = new Date(Date.now() - 1000);
   await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByText("Check your email to confirm your account").waitFor();
+  await page.goto(await emailLink(email, since));
   await page.waitForURL(/\/orgs/);
   return { ctx, page };
 }
@@ -369,6 +390,97 @@ await aiStep("Audit log records the AI switch and the run lifecycle", async () =
   for (const a of ["organization.ai_review_enabled", "analysis_run.updated"]) {
     expect((await p.getByText(a, { exact: true }).count()) > 0, `missing ${a}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 003: email invitations and password reset
+// ---------------------------------------------------------------------------
+async function setPassword(p, password) {
+  await p.waitForURL(/\/account\/password/);
+  await p.getByLabel("New password").fill(password);
+  await p.getByLabel("Confirm password").fill(password);
+  await p.getByRole("button", { name: "Save password" }).click();
+  await p.getByText("Password saved.").waitFor();
+}
+
+await step("Admin invites someone without an account; they join from the emailed link", async () => {
+  const p = admin.page;
+  const email = "invitee@rise-demo.test";
+  const since = new Date(Date.now() - 1000);
+  await p.goto(`${BASE}/o/${slug}/members`);
+  await p.getByLabel("Email").fill(email);
+  await p.getByLabel("Role").selectOption("agent");
+  await p.getByRole("button", { name: "Add member" }).click();
+  await p.getByText(`Invited ${email}.`).waitFor();
+  await p.reload();
+  await p.getByRole("cell", { name: email, exact: true }).waitFor();
+  await shot(p, "members-pending-invitation");
+
+  const link = await emailLink(email, since);
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  const ip = await ctx.newPage();
+  await ip.goto(link);
+  await setPassword(ip, "fictional-invitee-456");
+  await shot(ip, "invitee-password-set");
+  await ip.goto(`${BASE}/o/${slug}`);
+  await ip.waitForURL(new RegExp(`/o/${slug}/`));
+  expect(!(await ip.getByText("Page not found").count()), "invitee can't open the brokerage");
+
+  await p.reload();
+  expect((await p.getByText("Pending invitations").count()) === 0, "invitation still pending");
+  expect((await p.getByRole("cell", { name: email, exact: true }).count()) > 0, "invitee not listed as a member");
+  await ctx.close();
+});
+
+await step("Admin revokes an invitation", async () => {
+  const p = admin.page;
+  const email = "revoked@rise-demo.test";
+  await p.getByLabel("Email").fill(email);
+  await p.getByRole("button", { name: "Add member" }).click();
+  await p.getByText(`Invited ${email}.`).waitFor();
+  await p.reload();
+  await p.getByRole("button", { name: `Revoke invitation for ${email}` }).click();
+  await p.getByText("Pending invitations").waitFor({ state: "detached" });
+});
+
+await step("Forgotten password: reset by email, then sign in with the new one", async () => {
+  const email = "broker@other-demo.test";
+  const since = new Date(Date.now() - 1000);
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/login`);
+  await p.getByRole("button", { name: "Forgot your password?" }).click();
+  await p.getByLabel("Email").fill(email);
+  await p.getByRole("button", { name: "Send reset link" }).click();
+  await p.getByText("If an account exists for that email").waitFor();
+  await shot(p, "reset-requested");
+
+  await p.goto(await emailLink(email, since));
+  await setPassword(p, "fictional-new-pass-789");
+  await ctx.close();
+
+  const fresh = await browser.newContext();
+  const f = await fresh.newPage();
+  await f.goto(`${BASE}/login`);
+  await f.getByLabel("Email").fill(email);
+  await f.getByLabel("Password").fill("fictional-pass-123");
+  await f.getByRole("button", { name: "Sign in" }).click();
+  await f.getByText("Email or password is incorrect.").waitFor();
+  // React resets the form after an action, so fill both fields again.
+  await f.getByLabel("Email").fill(email);
+  await f.getByLabel("Password").fill("fictional-new-pass-789");
+  await f.getByRole("button", { name: "Sign in" }).click();
+  await f.waitForURL(/\/orgs/);
+  await fresh.close();
+});
+
+await step("A used or broken email link is refused", async () => {
+  const ctx = await browser.newContext();
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/auth/confirm?token_hash=not-a-real-token&type=recovery&next=/account/password`);
+  await p.waitForURL(/\/login\?error=link/);
+  await p.getByText(/link/i).first().waitFor();
+  await ctx.close();
 });
 
 await browser.close();

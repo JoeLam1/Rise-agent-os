@@ -159,3 +159,19 @@ export async function profilesById(supabase: ServerSupabase, ids: (string | null
 export function displayName(profile: Profile | null | undefined): string {
   return profile?.full_name || profile?.email || "Unknown user";
 }
+
+export type Invitation = { id: string; email: string; role: string; created_at: string; expires_at: string };
+
+/** Open (not accepted, revoked or expired) invitations. Only admins can read these. */
+export async function listOpenInvitations(supabase: ServerSupabase, orgId: string): Promise<Invitation[]> {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("id, email, role, created_at, expires_at")
+    .eq("org_id", orgId)
+    .is("accepted_at", null)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Could not load invitations: ${error.message}`);
+  return (data ?? []) as Invitation[];
+}

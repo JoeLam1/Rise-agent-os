@@ -27,7 +27,7 @@ export function AddMemberForm({ orgSlug }: { orgSlug: string }) {
   const [state, action] = useActionState(addMember.bind(null, orgSlug), initialActionState);
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
-      <Field label="Email" htmlFor="email">
+      <Field label="Email" htmlFor="email" hint="No account yet? We'll email them an invitation.">
         <Input id="email" name="email" type="email" required placeholder="agent@example.com" />
       </Field>
       <Field label="Role" htmlFor="role">
