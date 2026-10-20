@@ -7,6 +7,9 @@ type PgLikeError = { code?: string; message?: string } | null | undefined;
  */
 export function friendlyDbError(error: PgLikeError, fallback = "Something went wrong. Please try again."): string {
   if (!error) return fallback;
+  if (error.message?.includes("two-step sign-in is required")) {
+    return "This needs two-step sign-in. Turn it on under Security (top right), then try again.";
+  }
   switch (error.code) {
     case "42501":
       return "You don't have permission to do that.";

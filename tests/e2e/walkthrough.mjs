@@ -14,7 +14,7 @@
 // browser instead of `npx playwright install chromium`.
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -100,6 +100,37 @@ async function emailLink(to, since) {
   }
   throw new Error(`no email to ${to} arrived`);
 }
+// RFC 6238 codes for the authenticator-app steps. A code is used at most once
+// per 30-second window, as a real app would show a fresh one each time.
+const usedSteps = new Map();
+async function totp(secret) {
+  let step = Math.floor(Date.now() / 30000);
+  if ((usedSteps.get(secret) ?? -1) >= step) {
+    await new Promise((r) => setTimeout(r, (step + 1) * 30000 - Date.now() + 250));
+    step += 1;
+  }
+  usedSteps.set(secret, step);
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const c of secret.replace(/=+$/, "").toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const h = createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1] & 0xf;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+async function enrollMfa(page) {
+  await page.goto(`${BASE}/account/security`);
+  await page.getByRole("button", { name: "Set up two-step sign-in" }).click();
+  const secret = (await page.getByTestId("totp-secret").textContent()).trim();
+  await shot(page, "mfa-setup");
+  await page.getByLabel("Code").fill(await totp(secret));
+  await page.getByRole("button", { name: "Turn on two-step sign-in" }).click();
+  // The page re-renders once the session is upgraded and shows the "On" state.
+  await page.getByText(/asked for a code from your authenticator app/).waitFor();
+  return secret;
+}
 async function newUser(name, email) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
   const page = await ctx.newPage();
@@ -133,6 +164,18 @@ await step("Broker, agent and an outsider sign up", async () => {
   broker = await newUser("Bo Demo-Broker", "broker@rise-demo.test");
   agent = await newUser("Ava Demo-Agent", "agent@rise-demo.test");
   other = await newUser("Oscar Other-Brokerage", "broker@other-demo.test");
+});
+
+await step("Admin can't manage members until two-step sign-in is on, then turns it on", async () => {
+  const p = admin.page;
+  await p.goto(`${BASE}/o/${slug}/members`);
+  await p.getByText("Turn on two-step sign-in").waitFor();
+  await p.getByLabel("Email").fill("broker@rise-demo.test");
+  await p.getByRole("button", { name: "Add member" }).click();
+  await p.getByText("This needs two-step sign-in").waitFor();
+  admin.secret = await enrollMfa(p);
+  await p.goto(`${BASE}/o/${slug}/members`);
+  expect((await p.getByText("Turn on two-step sign-in").count()) === 0, "banner still shown");
 });
 
 await step("Admin adds broker and agent as members", async () => {
@@ -227,10 +270,19 @@ await step("Broker sees it in the pre-signature queue and on the dashboard", asy
   const p = broker.page;
   await p.goto(`${BASE}/o/${slug}`);
   await p.waitForURL(new RegExp(`/o/${slug}/dashboard/broker`));
+  await p.getByText("Turn on two-step sign-in").waitFor();
   await shot(p, "broker-dashboard");
   await p.goto(`${BASE}/o/${slug}/queues/pre-signature`);
   await p.getByRole("link", { name: /Purchase agreement · v2/ }).first().waitFor();
   await shot(p, "pre-signature-queue");
+});
+
+await step("Broker can't approve without two-step sign-in, then turns it on", async () => {
+  const p = broker.page;
+  await p.goto(reviewUrl);
+  await p.getByRole("button", { name: "Approve" }).click();
+  await p.getByText("This needs two-step sign-in").waitFor();
+  broker.secret = await enrollMfa(p);
 });
 
 await step("Request changes without a note is refused", async () => {
@@ -472,6 +524,27 @@ await step("Forgotten password: reset by email, then sign in with the new one", 
   await f.getByRole("button", { name: "Sign in" }).click();
   await f.waitForURL(/\/orgs/);
   await fresh.close();
+});
+
+await step("Signing in again asks for the authenticator code", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/o/${slug}/members`);
+  await p.getByLabel("Email").fill("admin@rise-demo.test");
+  await p.getByLabel("Password").fill("fictional-pass-123");
+  await p.getByRole("button", { name: "Sign in" }).click();
+  await p.waitForURL(/\/login\/verify/);
+  await shot(p, "mfa-verify");
+  // A password-only session can't reach the app before the code.
+  await p.goto(`${BASE}/o/${slug}/members`);
+  await p.waitForURL(/\/login\/verify/);
+  await p.getByLabel("Code").fill("000000");
+  await p.getByRole("button", { name: "Verify" }).click();
+  await p.getByText("That code didn't match").waitFor();
+  await p.getByLabel("Code").fill(await totp(admin.secret));
+  await p.getByRole("button", { name: "Verify" }).click();
+  await p.waitForURL(new RegExp(`/o/${slug}/members`));
+  await ctx.close();
 });
 
 await step("A used or broken email link is refused", async () => {

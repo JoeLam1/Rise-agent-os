@@ -315,8 +315,10 @@ max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+# Brokers and admins need a TOTP-verified (aal2) session for decisions and admin
+# actions (supabase/migrations/20261021000200_mfa.sql).
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

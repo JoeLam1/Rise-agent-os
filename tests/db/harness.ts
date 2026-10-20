@@ -67,7 +67,9 @@ export async function runAs<T extends pg.QueryResultRow = pg.QueryResultRow>(
   userId: string | null,
   sql: string,
   params: unknown[] = [],
-  opts: { commit?: boolean; role?: Role } = {},
+  // aal: the session's assurance level; signed-in users default to aal2
+  // (passed two-step sign-in) so only MFA tests need to think about it.
+  opts: { commit?: boolean; role?: Role; aal?: "aal1" | "aal2" } = {},
 ): Promise<pg.QueryResult<T>> {
   const role: Role = opts.role ?? (userId ? "authenticated" : "anon");
   const client = await db.admin.connect();
@@ -75,7 +77,7 @@ export async function runAs<T extends pg.QueryResultRow = pg.QueryResultRow>(
     await client.query("begin");
     await client.query(`set local role ${role}`);
     await client.query("select set_config('request.jwt.claims', $1, true)", [
-      JSON.stringify(userId ? { sub: userId, role } : { role }),
+      JSON.stringify(userId ? { sub: userId, role, aal: opts.aal ?? "aal2" } : { role }),
     ]);
     const result = await client.query<T>(sql, params);
     await client.query(opts.commit ? "commit" : "rollback");
