@@ -34,3 +34,48 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+
+  # Full browser walkthrough against a real local Supabase stack (Auth,
+  # PostgREST, Storage, Postgres) with the AI model stubbed. No secrets needed.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start local Supabase
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,postgres-meta
+      - name: Write app env from the local stack
+        run: |
+          npx supabase status -o json > /tmp/sb.json
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$(jq -r .API_URL /tmp/sb.json)"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(jq -r .PUBLISHABLE_KEY /tmp/sb.json)"
+          } > .env.local
+          echo "SUPABASE_URL=$(jq -r .API_URL /tmp/sb.json)" >> "$GITHUB_ENV"
+          echo "::add-mask::$(jq -r .SERVICE_ROLE_KEY /tmp/sb.json)"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(jq -r .SERVICE_ROLE_KEY /tmp/sb.json)" >> "$GITHUB_ENV"
+      - run: npm run build
+      - name: Start the app
+        run: |
+          nohup npm start > /tmp/next.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3000/login && exit 0; sleep 1; done
+          cat /tmp/next.log; exit 1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          E2E_REQUIRE_AI_STEPS: "1"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: test-results/e2e
+          retention-days: 7
+      - name: App log on failure
+        if: failure()
+        run: tail -200 /tmp/next.log
