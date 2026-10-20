@@ -5,7 +5,10 @@
  *   npm run worker -- --once  # drain the queue, then exit
  *
  * Needs SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL), SUPABASE_SERVICE_ROLE_KEY
- * and ANTHROPIC_API_KEY in the environment. See docs/SPRINT_002.md.
+ * and RISE_ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY) in the environment. The
+ * RISE_ name exists because some hosts, including Claude cloud environments,
+ * reserve ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL for themselves. See
+ * docs/SPRINT_002.md.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
@@ -28,7 +31,12 @@ async function main() {
   const db = createClient(requireEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"), requireEnv("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const anthropic = new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY"), maxRetries: 4 });
+  const anthropic = new Anthropic({
+    apiKey: requireEnv("RISE_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
+    // Explicit, so a host-level ANTHROPIC_BASE_URL never redirects document traffic.
+    baseURL: process.env.RISE_ANTHROPIC_BASE_URL ?? "https://api.anthropic.com",
+    maxRetries: 4,
+  });
   const engine = new NjContractEngine({ callModel: anthropicModelCall(anthropic) });
   const log = (line: string) => console.log(`[analysis-worker] ${new Date().toISOString()} ${line}`);
 

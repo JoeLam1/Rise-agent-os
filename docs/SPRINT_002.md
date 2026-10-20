@@ -50,10 +50,17 @@ The worker is a separate Node process, never part of the Next.js app.
 ```bash
 export SUPABASE_URL=http://127.0.0.1:54321          # or the hosted project URL
 export SUPABASE_SERVICE_ROLE_KEY=...                # server-side only
-export ANTHROPIC_API_KEY=...                        # server-side only
+export RISE_ANTHROPIC_API_KEY=...                   # server-side only (ANTHROPIC_API_KEY also accepted)
 npm run worker            # poll every 5 s
 npm run worker -- --once  # drain the queue and exit
 ```
+
+In a Claude cloud environment, add the key as the environment variable
+`RISE_ANTHROPIC_API_KEY`: the platform reserves `ANTHROPIC_API_KEY` and doesn't
+pass it to sessions, and network secrets are never attached to Anthropic API
+requests. The worker always calls `https://api.anthropic.com` unless
+`RISE_ANTHROPIC_BASE_URL` says otherwise, so a host-level `ANTHROPIC_BASE_URL`
+is ignored.
 
 Before turning AI review on for a brokerage with real documents: confirm the
 data agreement with the provider (zero retention / no training), and have the
