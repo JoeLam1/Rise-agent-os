@@ -68,6 +68,31 @@ export async function setAiReview(orgSlug: string, _prev: ActionState, formData:
   return { message: enabled ? "AI review is on for new review requests." : "AI review is off. New requests use the mock." };
 }
 
+const roleSchema = z.enum(["agent", "broker", "admin"]);
+
+export async function changeMemberRole(
+  orgSlug: string,
+  membershipId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = roleSchema.safeParse(formData.get("role"));
+  if (!parsed.success) return { error: "Choose a role." };
+  const { supabase } = await requireAdmin(orgSlug);
+  const { error } = await supabase.rpc("set_member_role", { p_membership: membershipId, p_role: parsed.data });
+  if (error) return { error: friendlyDbError(error) };
+  revalidatePath(`/o/${orgSlug}/members`);
+  return { message: "Role saved." };
+}
+
+export async function removeMember(orgSlug: string, membershipId: string): Promise<ActionState> {
+  const { supabase } = await requireAdmin(orgSlug);
+  const { error } = await supabase.rpc("remove_member", { p_membership: membershipId });
+  if (error) return { error: friendlyDbError(error) };
+  revalidatePath(`/o/${orgSlug}/members`);
+  return { message: "Removed." };
+}
+
 export async function revokeInvitation(orgSlug: string, invitationId: string): Promise<void> {
   const { supabase } = await requireAdmin(orgSlug);
   const { error } = await supabase.rpc("revoke_invitation", { p_invitation: invitationId });

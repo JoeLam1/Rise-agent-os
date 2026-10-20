@@ -146,6 +146,13 @@ export async function listMembers(supabase: ServerSupabase, orgId: string) {
   return rows.map((r) => ({ ...r, profile: profiles.get(r.user_id) ?? null }));
 }
 
+/** Who has an authenticator app set up. Admins only (the database checks). */
+export async function memberTwoStepStatus(supabase: ServerSupabase, orgId: string): Promise<Map<string, boolean>> {
+  const { data, error } = await supabase.rpc("member_two_step_status", { p_org: orgId });
+  if (error) throw new Error(`Could not load two-step status: ${error.message}`);
+  return new Map(((data ?? []) as { user_id: string; two_step: boolean }[]).map((r) => [r.user_id, r.two_step]));
+}
+
 /** Names for display. Profiles are visible only for people who share an org. */
 export async function profilesById(supabase: ServerSupabase, ids: (string | null | undefined)[]) {
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];

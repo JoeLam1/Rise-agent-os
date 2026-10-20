@@ -30,6 +30,15 @@ create table auth.users (
   created_at timestamptz not null default now()
 );
 
+-- Supabase Auth's MFA factor list (only the columns the migrations read).
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  factor_type text not null default 'totp',
+  status text not null default 'verified',
+  created_at timestamptz not null default now()
+);
+
 -- Same resolution order as Supabase's auth.uid()/auth.role().
 create function auth.uid() returns uuid language sql stable as $$
   select coalesce(

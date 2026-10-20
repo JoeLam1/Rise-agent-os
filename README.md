@@ -43,6 +43,11 @@ for what was built, what was tested, and the known gaps.
 - A deployment guide, a worker container image and a health check with
   heartbeat alerting.
 
+## What Sprint 004 adds
+- Admins change roles and remove members, and see who has two-step sign-in.
+- Backup codes for a lost phone.
+- Membership changes go only through database functions that require two-step sign-in.
+
 ## Docs
 | Doc | What it covers |
 | --- | --- |
@@ -52,6 +57,7 @@ for what was built, what was tested, and the known gaps.
 | [`docs/SPRINT_001.md`](docs/SPRINT_001.md) | Sprint 001 plan, delivery and test report |
 | [`docs/SPRINT_002.md`](docs/SPRINT_002.md) | Sprint 002 plan, delivery, test report and how to run the worker |
 | [`docs/SPRINT_003.md`](docs/SPRINT_003.md) | Sprint 003 plan, delivery and test report |
+| [`docs/SPRINT_004.md`](docs/SPRINT_004.md) | Sprint 004 plan, delivery and test report |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Hosted Supabase, Vercel, worker host, backups, alerts, account recovery |
 | [`CLAUDE.md`](CLAUDE.md) | Engineering rules for anyone (human or AI) working in this repo |
 

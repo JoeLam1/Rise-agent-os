@@ -183,7 +183,7 @@ await step("Admin adds broker and agent as members", async () => {
   await p.goto(`${BASE}/o/${slug}/members`);
   for (const [email, role] of [["broker@rise-demo.test", "broker"], ["agent@rise-demo.test", "agent"]]) {
     await p.getByLabel("Email").fill(email);
-    await p.getByLabel("Role").selectOption(role);
+    await p.getByLabel("Role", { exact: true }).selectOption(role);
     await p.getByRole("button", { name: "Add member" }).click();
     await p.getByText(`Added ${email}.`).waitFor();
   }
@@ -461,7 +461,7 @@ await step("Admin invites someone without an account; they join from the emailed
   const since = new Date(Date.now() - 1000);
   await p.goto(`${BASE}/o/${slug}/members`);
   await p.getByLabel("Email").fill(email);
-  await p.getByLabel("Role").selectOption("agent");
+  await p.getByLabel("Role", { exact: true }).selectOption("agent");
   await p.getByRole("button", { name: "Add member" }).click();
   await p.getByText(`Invited ${email}.`).waitFor();
   await p.reload();
@@ -544,6 +544,70 @@ await step("Signing in again asks for the authenticator code", async () => {
   await p.getByLabel("Code").fill(await totp(admin.secret));
   await p.getByRole("button", { name: "Verify" }).click();
   await p.waitForURL(new RegExp(`/o/${slug}/members`));
+  await ctx.close();
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 004: managing members and recovering two-step sign-in
+// ---------------------------------------------------------------------------
+await step("Admin sees who has two-step sign-in, changes a role and removes a member", async () => {
+  const p = admin.page;
+  await p.goto(`${BASE}/o/${slug}/members`);
+  const row = (name) => p.getByRole("row").filter({ hasText: name });
+  await row("Bo Demo-Broker").getByText("On", { exact: true }).waitFor();
+  await row("Ava Demo-Agent").getByText("Off", { exact: true }).waitFor();
+  await shot(p, "members-two-step");
+
+  // The only admin can't step down.
+  await p.getByLabel("Role for Dana Demo-Admin", { exact: true }).selectOption("broker");
+  await p.getByRole("button", { name: "Save role for Dana Demo-Admin" }).click();
+  await p.getByText("a brokerage needs at least one admin").waitFor();
+
+  const who = "invitee@rise-demo.test";
+  await p.getByLabel(`Role for ${who}`, { exact: true }).selectOption("broker");
+  await p.getByRole("button", { name: `Save role for ${who}` }).click();
+  await p.getByText("Role saved.").waitFor();
+  await p.reload();
+  expect((await p.getByLabel(`Role for ${who}`, { exact: true }).inputValue()) === "broker", "role not saved");
+
+  await p.getByRole("button", { name: `Remove ${who}` }).click();
+  await p.getByRole("button", { name: "Confirm remove" }).click();
+  // Wait for the row itself to go: the Remove button disappears as soon as
+  // the confirm form opens, before the removal has been saved.
+  await p.getByRole("cell", { name: who, exact: true }).first().waitFor({ state: "detached" });
+  await p.goto(`${BASE}/o/${slug}/audit`);
+  await p.getByText("membership.removed", { exact: true }).first().waitFor();
+});
+
+await step("Broker loses their phone and recovers with a backup code", async () => {
+  const p = broker.page;
+  await p.goto(`${BASE}/account/security`);
+  await p.getByRole("button", { name: "Create backup codes" }).click();
+  await p.getByTestId("backup-codes").waitFor();
+  const codes = (await p.getByTestId("backup-codes").locator("li").allTextContents()).map((c) => c.trim());
+  expect(codes.length === 10, `got ${codes.length} codes`);
+  await shot(p, "backup-codes");
+
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  const f = await ctx.newPage();
+  await f.goto(`${BASE}/login`);
+  await f.getByLabel("Email").fill("broker@rise-demo.test");
+  await f.getByLabel("Password").fill("fictional-pass-123");
+  await f.getByRole("button", { name: "Sign in" }).click();
+  await f.waitForURL(/\/login\/verify/);
+  await f.getByRole("button", { name: "Lost your phone? Use a backup code" }).click();
+  await f.getByLabel("Backup code").fill("0000-0000-0000");
+  await f.getByRole("button", { name: "Use backup code" }).click();
+  await f.getByText("That backup code didn't work").waitFor();
+  await f.getByLabel("Backup code").fill(codes[0]);
+  await f.getByRole("button", { name: "Use backup code" }).click();
+  await f.waitForURL(/\/account\/security\?reset=1/);
+  await f.getByText("Your old authenticator app was removed").waitFor();
+  await shot(f, "recovered-with-backup-code");
+  broker.secret = await enrollMfa(f);
+  await f.goto(`${BASE}/o/${slug}`);
+  await f.waitForURL(new RegExp(`/o/${slug}/dashboard/broker`));
+  expect((await f.getByText("Turn on two-step sign-in").count()) === 0, "still asked to set up two-step sign-in");
   await ctx.close();
 });
 

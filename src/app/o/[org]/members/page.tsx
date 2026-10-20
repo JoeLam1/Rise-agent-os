@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
-import { listMembers, listOpenInvitations, displayName } from "@/lib/data/queries";
+import { listMembers, listOpenInvitations, memberTwoStepStatus, displayName } from "@/lib/data/queries";
+import { MemberRoleForm, RemoveMemberButton } from "@/components/forms/member-forms";
 import { revokeInvitation } from "@/app/actions/orgs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +16,12 @@ export const metadata: Metadata = { title: "Members" };
 
 export default async function MembersPage({ params }: PageProps<"/o/[org]/members">) {
   const { org: slug } = await params;
-  const { supabase, org } = await requireAdmin(slug);
-  const [members, invitations] = await Promise.all([listMembers(supabase, org.id), listOpenInvitations(supabase, org.id)]);
+  const { supabase, org, userId } = await requireAdmin(slug);
+  const [members, invitations, twoStep] = await Promise.all([
+    listMembers(supabase, org.id),
+    listOpenInvitations(supabase, org.id),
+    memberTwoStepStatus(supabase, org.id),
+  ]);
 
   return (
     <>
@@ -74,7 +79,9 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Two-step sign-in</TableHead>
                 <TableHead>Added</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -83,9 +90,25 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
                   <TableCell>{displayName(m.profile)}</TableCell>
                   <TableCell>{m.profile?.email ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{ROLE_LABELS[m.role as OrgRole]}</Badge>
+                    <MemberRoleForm orgSlug={slug} membershipId={m.id} role={m.role} who={displayName(m.profile)} />
+                  </TableCell>
+                  <TableCell>
+                    {twoStep.get(m.user_id) ? (
+                      <Badge variant="secondary">On</Badge>
+                    ) : (
+                      <Badge variant={m.role === "agent" ? "outline" : "destructive"}>
+                        {m.role === "agent" ? "Off" : "Off: can't approve or manage"}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{formatDateTime(m.created_at)}</TableCell>
+                  <TableCell className="text-right">
+                    {m.user_id === userId ? (
+                      <span className="text-muted-foreground text-sm">You</span>
+                    ) : (
+                      <RemoveMemberButton orgSlug={slug} membershipId={m.id} who={displayName(m.profile)} />
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
