@@ -35,6 +35,21 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
 
+  # The AI worker's container image builds and starts. With no secrets it must
+  # refuse to run (exit 2) rather than do anything.
+  worker-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f Dockerfile.worker -t rise-worker .
+      - name: Starts, and refuses to run without its secrets
+        run: |
+          set +e
+          out=$(docker run --rm rise-worker 2>&1); code=$?
+          echo "$out"
+          [ "$code" = 2 ] && echo "$out" | grep -q "Missing SUPABASE_URL"
+
   # Full browser walkthrough against a real local Supabase stack (Auth,
   # PostgREST, Storage, Postgres) with the AI model stubbed. No secrets needed.
   e2e:

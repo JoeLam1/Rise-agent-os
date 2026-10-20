@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "worker": "tsx --tsconfig tsconfig.json scripts/analysis-worker.ts",
+    "health": "tsx --tsconfig tsconfig.json scripts/health-check.ts",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "npm run test:unit && npm run test:db",
