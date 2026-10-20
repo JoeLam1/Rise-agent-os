@@ -118,7 +118,7 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   Sprint 001 mock path.
 - **Worker** (`scripts/analysis-worker.ts`, `npm run worker`) is a separate Node
   process. It is the only code that holds `SUPABASE_SERVICE_ROLE_KEY` and
-  `ANTHROPIC_API_KEY`; the Next.js app still uses only the publishable key.
+  `RISE_ANTHROPIC_API_KEY`; the Next.js app still uses only the publishable key.
   Per run it calls `claim_analysis_run()` (`for update skip locked`), downloads
   the file from private Storage, checks size and SHA-256 against
   `document_versions`, runs the engine, then `complete_analysis_run()` or

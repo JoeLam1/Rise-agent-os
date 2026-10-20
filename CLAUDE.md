@@ -41,7 +41,7 @@ npm run test:unit    # vitest, src/**/*.test.ts
 npm run test:db      # boots a throwaway Postgres (or uses DATABASE_URL) and runs tests/db
 npm run build
 npm run test:e2e     # browser walkthrough against a running app + local Supabase
-npm run worker       # AI review worker (server-side; needs service key + ANTHROPIC_API_KEY)
+npm run worker       # AI review worker (server-side; needs service key + RISE_ANTHROPIC_API_KEY)
 npx supabase start   # full local Supabase (requires Docker; in a cloud container start `dockerd` first)
 ```
 
