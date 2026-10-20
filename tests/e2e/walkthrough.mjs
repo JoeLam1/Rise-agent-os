@@ -611,6 +611,32 @@ await step("Broker loses their phone and recovers with a backup code", async () 
   await ctx.close();
 });
 
+// ---------------------------------------------------------------------------
+// Sprint 005: a removed agent's transactions go to someone still here
+// ---------------------------------------------------------------------------
+await step("Admin removes the agent and hands their transactions to the broker", async () => {
+  const p = admin.page;
+  await p.goto(`${BASE}/o/${slug}/members`);
+  const who = "Ava Demo-Agent";
+  await p.getByRole("button", { name: `Remove ${who}` }).click();
+  await p.getByRole("button", { name: "Confirm remove" }).click();
+  await p.getByLabel(`New agent for ${who}'s transactions`).waitFor();
+  await shot(p, "former-member-transactions");
+  await p.getByLabel(`New agent for ${who}'s transactions`).selectOption({ label: "Bo Demo-Broker" });
+  await p.getByRole("button", { name: `Reassign ${who}'s transactions` }).click();
+  await p.getByText("Moved 1 transaction.").waitFor();
+  await p.reload();
+  expect((await p.getByText("Transactions of former members").count()) === 0, "former member still listed");
+  await p.goto(`${BASE}/o/${slug}/audit`);
+  await p.getByText("transaction.reassigned", { exact: true }).first().waitFor();
+
+  // The removed agent no longer sees it; the brokerage still does.
+  await agent.page.goto(txnUrl);
+  expect((await agent.page.getByText("10 Example Lane").count()) === 0, "removed agent still sees the transaction");
+  await p.goto(txnUrl);
+  await p.getByText("10 Example Lane").first().waitFor();
+});
+
 await step("A used or broken email link is refused", async () => {
   const ctx = await browser.newContext();
   const p = await ctx.newPage();

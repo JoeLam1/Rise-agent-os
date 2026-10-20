@@ -14,7 +14,8 @@
     "test:unit": "vitest run src",
     "test:db": "scripts/with-local-postgres.sh vitest run tests/db",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "test:e2e": "node tests/e2e/walkthrough.mjs"
+    "test:e2e": "node tests/e2e/walkthrough.mjs",
+    "eval:ai": "tsx --tsconfig tsconfig.json scripts/eval-ai-review.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
