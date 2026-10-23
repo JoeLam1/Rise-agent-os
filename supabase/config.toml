@@ -3,6 +3,8 @@
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
 project_id = "rise-agent-os"
+# Hosted migrations are applied by the Supabase GitHub integration on merge to
+# main (docs/DEPLOYMENT.md). Settings in this file only affect the local stack.
 
 [api]
 enabled = true
