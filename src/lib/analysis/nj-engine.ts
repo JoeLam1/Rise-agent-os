@@ -4,7 +4,10 @@ import { z } from "zod";
 import { CHECKLIST_VERSION, checklistFor, type ChecklistItem } from "./checklist";
 import type { AnalysisInput, ContractAnalysisEngine } from "./engine";
 import { analysisResultSchema, type AnalysisResult } from "./schema";
+import { readPdfText, type PdfTextReader } from "./pdf-text";
 import { verifyItems, type RawItem } from "./verify";
+
+export { readPdfText, type PdfTextReader };
 
 export const NJ_ENGINE_VERSION = `nj-contract-ai-0.1.0+${CHECKLIST_VERSION}`;
 export const NJ_MODEL = "claude-opus-5-5";
@@ -22,16 +25,6 @@ export class AnalysisFailure extends Error {}
 /** Sends one request to the model. Injected in tests. */
 export type ModelCall = (params: MessageCreateParamsNonStreaming) => Promise<BetaMessage>;
 
-/** Reads page-by-page text from a PDF. Injected in tests. */
-export type PdfTextReader = (file: Uint8Array) => Promise<string[]>;
-
-export const readPdfText: PdfTextReader = async (file) => {
-  const { extractText, getDocumentProxy } = await import("unpdf");
-  // pdf.js takes ownership of the buffer, so give it a copy.
-  const pdf = await getDocumentProxy(new Uint8Array(file));
-  const { text } = await extractText(pdf, { mergePages: false });
-  return text;
-};
 
 export function anthropicModelCall(client: Anthropic): ModelCall {
   // Streaming avoids HTTP timeouts on long documents; we only need the final message.

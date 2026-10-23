@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireBroker } from "@/lib/auth";
-import { listAudit, listRecentDecisions, listReviews, listTransactions, profilesById, displayName } from "@/lib/data/queries";
+import {
+  listAudit,
+  listRecentDecisions,
+  listReviewTimes,
+  listReviews,
+  listTransactions,
+  listUpcomingDates,
+  profilesById,
+  displayName,
+} from "@/lib/data/queries";
+import { UPCOMING_DAYS, addDays, formatHours, localToday, turnaround } from "@/lib/domain/schedule";
+import { UpcomingDates } from "@/components/app/key-dates";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, StatCard } from "@/components/app/page-header";
@@ -15,12 +26,16 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
   const { org: slug } = await params;
   const { supabase, org } = await requireBroker(slug);
 
-  const [transactions, waiting, decisions, audit] = await Promise.all([
+  const today = localToday();
+  const [transactions, waiting, decisions, audit, upcoming, reviewTimes] = await Promise.all([
     listTransactions(supabase, org.id),
     listReviews(supabase, org.id, { states: ["ready_for_broker"] }),
     listRecentDecisions(supabase, org.id, 8),
     listAudit(supabase, org.id, { limit: 8 }),
+    listUpcomingDates(supabase, org.id, addDays(today, UPCOMING_DAYS)),
+    listReviewTimes(supabase, org.id, 30),
   ]);
+  const speed = turnaround(reviewTimes);
   const people = await profilesById(supabase, [
     ...waiting.map((r) => r.requested_by),
     ...decisions.map((r) => r.decided_by),
@@ -44,10 +59,37 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
       </div>
       <Card>
         <CardHeader>
+          <CardTitle>Review turnaround</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-8 text-sm" data-testid="turnaround">
+          <div>
+            <p className="text-muted-foreground">Median time to a decision (last 30 days)</p>
+            <p className="text-xl font-semibold tabular-nums">{formatHours(speed.medianHours)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Decisions (last 30 days)</p>
+            <p className="text-xl font-semibold tabular-nums">{speed.decided}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Longest wait right now</p>
+            <p className="text-xl font-semibold tabular-nums">{formatHours(speed.oldestWaitingHours)}</p>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
           <CardTitle>Awaiting your decision</CardTitle>
         </CardHeader>
         <CardContent>
           <ReviewTable orgSlug={slug} reviews={waiting} people={people} empty="No reviews are waiting." />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Due in the next two weeks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UpcomingDates orgSlug={slug} dates={upcoming} today={today} />
         </CardContent>
       </Card>
       <div className="grid gap-6 lg:grid-cols-2">

@@ -213,3 +213,19 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   `transaction.reassigned`.
   - `transactions_guard` now checks the agent's membership only when the agent
     is set or changed, so a removed agent's transactions stay editable.
+
+## Version comparison, key dates and turnaround (Sprint 006)
+- **Comparison** (`/o/[org]/compare?before=&after=`):
+  - The server component downloads both versions from Storage with the
+    viewer's session, so Storage RLS decides access, and extracts their text
+    (`src/lib/analysis/pdf-text.ts`).
+  - It compares the words with Myers' algorithm (`src/lib/compare/diff.ts`).
+    Nothing is stored. Both versions must belong to the same transaction.
+- **Key dates:** `public.transaction_dates` follows the tenant pattern:
+  - `org_id`, a composite `(org_id, transaction_id)` foreign key, and RLS
+    through `private.can_access_transaction`;
+  - a guard that makes org, transaction and author immutable and stamps
+    completion;
+  - an audit trigger for insert, update and delete.
+- **Turnaround** is computed in `src/lib/domain/schedule.ts` from the reviews
+  a broker can already read. It uses no new table or function.

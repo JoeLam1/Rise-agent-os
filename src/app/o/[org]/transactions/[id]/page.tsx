@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOrg } from "@/lib/auth";
-import { getTransaction, listDocumentsWithVersions, listReviews, profilesById, displayName } from "@/lib/data/queries";
+import {
+  getTransaction,
+  listDocumentsWithVersions,
+  listKeyDates,
+  listReviews,
+  profilesById,
+  displayName,
+} from "@/lib/data/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +19,9 @@ import { ReviewTable } from "@/components/app/review-table";
 import { StatusForm } from "@/components/forms/transaction-forms";
 import { NewDocumentForm, NewVersionForm, RequestReviewForm } from "@/components/forms/document-forms";
 import { DOCUMENT_KIND_LABELS, SIDE_LABELS, formatBytes, formatDate, formatDateTime } from "@/lib/domain/labels";
+import { localToday } from "@/lib/domain/schedule";
+import { KeyDateList } from "@/components/app/key-dates";
+import { AddKeyDateForm } from "@/components/forms/key-date-forms";
 
 export const metadata: Metadata = { title: "Transaction" };
 
@@ -23,9 +33,10 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
   const transaction = await getTransaction(supabase, org.id, id);
   if (!transaction) notFound();
 
-  const [documents, reviews] = await Promise.all([
+  const [documents, reviews, keyDates] = await Promise.all([
     listDocumentsWithVersions(supabase, transaction.id),
     listReviews(supabase, org.id, { transactionId: transaction.id }),
+    listKeyDates(supabase, transaction.id),
   ]);
   const people = await profilesById(supabase, [
     transaction.agent_id,
@@ -69,6 +80,19 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
 
       <Card>
         <CardHeader>
+          <CardTitle>Key dates</CardTitle>
+          <CardDescription>
+            Dates from the contract, entered by people. The app shows them; it doesn&apos;t work out legal deadlines.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <KeyDateList orgSlug={slug} dates={keyDates} today={localToday()} />
+          <AddKeyDateForm orgSlug={slug} transactionId={transaction.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Documents</CardTitle>
           <CardDescription>
             Every upload is kept as a numbered version. Versions can&apos;t be edited or deleted.
@@ -103,6 +127,14 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
                       <code className="text-muted-foreground text-xs" title={`SHA-256 ${v.sha256}`}>
                         sha256 {v.sha256.slice(0, 12)}…
                       </code>
+                      {doc.versions[i + 1] ? (
+                        <Link
+                          className="underline underline-offset-4"
+                          href={`/o/${slug}/compare?before=${doc.versions[i + 1].id}&after=${v.id}`}
+                        >
+                          Compare with v{doc.versions[i + 1].version_number}
+                        </Link>
+                      ) : null}
                     </div>
                     {i === 0 ? <RequestReviewForm orgSlug={slug} transactionId={transaction.id} versionId={v.id} /> : null}
                   </li>

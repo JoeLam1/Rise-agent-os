@@ -115,7 +115,8 @@ const POST_EXECUTION: ChecklistItem[] = [
     category: "Execution",
     label: "Changes since pre-signature review identified",
     guidance: "",
-    notEvaluatedReason: "Comparison with the pre-signature version is not built yet. Compare the versions directly.",
+    notEvaluatedReason:
+      "The AI doesn't compare versions. Use \"Changes since the approved pre-signature version\" on this page, which compares the text word by word.",
   },
 ];
 

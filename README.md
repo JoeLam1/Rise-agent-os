@@ -53,6 +53,12 @@ for what was built, what was tested, and the known gaps.
   to score the AI review against it (accuracy per checklist item, kinds of error, cost).
 - Admins hand a removed agent's transactions to a current member.
 
+## What Sprint 006 adds
+- Compare any two versions of a document word by word. A post-execution review
+  links straight to the comparison with the approved pre-signature version.
+- Key dates per transaction, and a "due in the next two weeks" list on the dashboards.
+- Review turnaround (median time to a decision) on the broker dashboard.
+
 ## Docs
 | Doc | What it covers |
 | --- | --- |
@@ -64,6 +70,7 @@ for what was built, what was tested, and the known gaps.
 | [`docs/SPRINT_003.md`](docs/SPRINT_003.md) | Sprint 003 plan, delivery and test report |
 | [`docs/SPRINT_004.md`](docs/SPRINT_004.md) | Sprint 004 plan, delivery and test report |
 | [`docs/SPRINT_005.md`](docs/SPRINT_005.md) | Sprint 005: AI review evaluation results, transaction reassignment |
+| [`docs/SPRINT_006.md`](docs/SPRINT_006.md) | Sprint 006: version comparison, key dates, review turnaround |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Hosted Supabase, Vercel, worker host, backups, alerts, account recovery |
 | [`CLAUDE.md`](CLAUDE.md) | Engineering rules for anyone (human or AI) working in this repo |
 

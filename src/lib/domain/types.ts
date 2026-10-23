@@ -21,6 +21,14 @@ export type ReviewState =
   | "rejected"
   | "withdrawn";
 
+export type KeyDateKind =
+  | "attorney_review_end"
+  | "inspection"
+  | "mortgage_commitment"
+  | "appraisal"
+  | "closing"
+  | "other";
+
 export type Organization = {
   id: string;
   name: string;
@@ -111,4 +119,18 @@ export type AuditEntry = {
   entity_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
+};
+
+export type TransactionDate = {
+  id: string;
+  org_id: string;
+  transaction_id: string;
+  kind: KeyDateKind;
+  label: string | null;
+  due_on: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 };

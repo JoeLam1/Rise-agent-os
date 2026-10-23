@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { REVIEW_STATE_LABELS, REVIEW_TYPE_LABELS, STATUS_LABELS } from "@/lib/domain/labels";
 import type { ReviewState, ReviewType, TransactionStatus } from "@/lib/domain/types";
+import type { DueState } from "@/lib/domain/schedule";
 
 const REVIEW_VARIANT: Record<ReviewState, React.ComponentProps<typeof Badge>["variant"]> = {
   pending_analysis: "secondary",
@@ -33,4 +34,16 @@ export function MockBadge() {
       Mock analysis
     </Badge>
   );
+}
+
+const DUE_VARIANT: Record<DueState["kind"], React.ComponentProps<typeof Badge>["variant"]> = {
+  done: "success",
+  overdue: "destructive",
+  today: "warning",
+  soon: "secondary",
+  later: "outline",
+};
+
+export function DueBadge({ due }: { due: DueState }) {
+  return <Badge variant={DUE_VARIANT[due.kind]}>{due.label}</Badge>;
 }
