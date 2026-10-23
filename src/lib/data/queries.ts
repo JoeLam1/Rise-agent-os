@@ -9,6 +9,7 @@ import type {
   Review,
   ReviewType,
   Transaction,
+  TransactionDate,
   TransactionStatus,
 } from "@/lib/domain/types";
 
@@ -33,6 +34,57 @@ export async function listTransactions(
 export async function getTransaction(supabase: ServerSupabase, orgId: string, id: string) {
   const { data } = await supabase.from("transactions").select("*").eq("org_id", orgId).eq("id", id).maybeSingle();
   return (data as Transaction | null) ?? null;
+}
+
+export async function listKeyDates(supabase: ServerSupabase, transactionId: string): Promise<TransactionDate[]> {
+  const { data, error } = await supabase
+    .from("transaction_dates")
+    .select("*")
+    .eq("transaction_id", transactionId)
+    .order("due_on", { ascending: true });
+  if (error) throw new Error(`Could not load key dates: ${error.message}`);
+  return (data ?? []) as TransactionDate[];
+}
+
+export type UpcomingDate = TransactionDate & {
+  transaction: Pick<Transaction, "id" | "property_address" | "agent_id" | "status"> | null;
+};
+
+/** Open key dates due on or before `through`, overdue ones included, on open transactions. */
+export async function listUpcomingDates(
+  supabase: ServerSupabase,
+  orgId: string,
+  through: string,
+  opts: { agentId?: string } = {},
+): Promise<UpcomingDate[]> {
+  const { data, error } = await supabase
+    .from("transaction_dates")
+    .select("*, transaction:transactions(id, property_address, agent_id, status)")
+    .eq("org_id", orgId)
+    .is("completed_at", null)
+    .lte("due_on", through)
+    .order("due_on", { ascending: true })
+    .limit(200);
+  if (error) throw new Error(`Could not load key dates: ${error.message}`);
+  return ((data ?? []) as UpcomingDate[]).filter(
+    (d) =>
+      d.transaction &&
+      d.transaction.status !== "closed" &&
+      d.transaction.status !== "cancelled" &&
+      (!opts.agentId || d.transaction.agent_id === opts.agentId),
+  );
+}
+
+/** Reviews requested in the last `days` days or still open, for the turnaround figures. */
+export async function listReviewTimes(supabase: ServerSupabase, orgId: string, days: number) {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("state, requested_at, decided_at")
+    .eq("org_id", orgId)
+    .or(`decided_at.gte.${since},state.in.(ready_for_broker,pending_analysis)`);
+  if (error) throw new Error(`Could not load review times: ${error.message}`);
+  return (data ?? []) as Pick<Review, "state" | "requested_at" | "decided_at">[];
 }
 
 export type DocumentWithVersions = DocumentRow & { versions: DocumentVersion[] };
@@ -106,6 +158,50 @@ export async function getReview(supabase: ServerSupabase, orgId: string, id: str
         version: (DocumentVersion & { document: Pick<DocumentRow, "id" | "title" | "kind"> | null }) | null;
       })
     | null;
+}
+
+export type VersionWithDocument = DocumentVersion & {
+  document: Pick<DocumentRow, "id" | "title" | "kind" | "transaction_id"> | null;
+};
+
+export async function getVersion(supabase: ServerSupabase, orgId: string, id: string) {
+  const { data } = await supabase
+    .from("document_versions")
+    .select("*, document:documents(id, title, kind, transaction_id)")
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .maybeSingle();
+  return (data as VersionWithDocument | null) ?? null;
+}
+
+/**
+ * The version a post-execution review should be compared with: the latest
+ * approved pre-signature review in the same transaction, preferring one on
+ * the same document.
+ */
+export async function findApprovedPreSignature(
+  supabase: ServerSupabase,
+  orgId: string,
+  transactionId: string,
+  documentId: string | undefined,
+) {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, decided_at, decided_by, version:document_versions(id, version_number, document_id, document:documents(title))")
+    .eq("org_id", orgId)
+    .eq("transaction_id", transactionId)
+    .eq("review_type", "pre_signature")
+    .eq("state", "approved")
+    .order("decided_at", { ascending: false });
+  if (error) throw new Error(`Could not load pre-signature reviews: ${error.message}`);
+  type Row = {
+    id: string;
+    decided_at: string;
+    decided_by: string;
+    version: { id: string; version_number: number; document_id: string; document: { title: string } | null } | null;
+  };
+  const rows = ((data ?? []) as unknown as Row[]).filter((r) => r.version);
+  return rows.find((r) => r.version!.document_id === documentId) ?? rows[0] ?? null;
 }
 
 export async function listAnalysisRuns(supabase: ServerSupabase, reviewId: string): Promise<AnalysisRun[]> {

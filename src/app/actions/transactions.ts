@@ -80,3 +80,57 @@ export async function updateTransactionStatus(
   revalidatePath(`/o/${orgSlug}/transactions/${transactionId}`);
   return { message: "Status updated." };
 }
+
+const keyDateSchema = z
+  .object({
+    kind: z.enum(["attorney_review_end", "inspection", "mortgage_commitment", "appraisal", "closing", "other"]),
+    label: z.string().trim().max(120).optional(),
+    dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date."),
+  })
+  .refine((d) => d.kind !== "other" || d.label, { message: "Describe the date.", path: ["label"] });
+
+export async function addKeyDate(
+  orgSlug: string,
+  transactionId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = keyDateSchema.safeParse({
+    kind: formData.get("kind"),
+    label: formData.get("label") || undefined,
+    dueOn: formData.get("dueOn"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const { supabase, org } = await requireOrg(orgSlug);
+  const { error } = await supabase.from("transaction_dates").insert({
+    org_id: org.id,
+    transaction_id: transactionId,
+    kind: parsed.data.kind,
+    label: parsed.data.label ?? null,
+    due_on: parsed.data.dueOn,
+  });
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath(`/o/${orgSlug}`, "layout");
+  return { message: "Date added." };
+}
+
+/** Marks a key date done (the database stamps who and when) or reopens it. */
+export async function setKeyDateDone(orgSlug: string, id: string, done: boolean): Promise<void> {
+  const { supabase, org } = await requireOrg(orgSlug);
+  const { error } = await supabase
+    .from("transaction_dates")
+    .update({ completed_at: done ? new Date().toISOString() : null })
+    .eq("org_id", org.id)
+    .eq("id", id);
+  if (error) throw new Error(`Could not update the date: ${error.message}`);
+  revalidatePath(`/o/${orgSlug}`, "layout");
+}
+
+export async function deleteKeyDate(orgSlug: string, id: string): Promise<void> {
+  const { supabase, org } = await requireOrg(orgSlug);
+  const { error } = await supabase.from("transaction_dates").delete().eq("org_id", org.id).eq("id", id);
+  if (error) throw new Error(`Could not remove the date: ${error.message}`);
+  revalidatePath(`/o/${orgSlug}`, "layout");
+}

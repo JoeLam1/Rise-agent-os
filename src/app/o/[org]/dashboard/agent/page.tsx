@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireOrg } from "@/lib/auth";
-import { listReviews, listTransactions, profilesById } from "@/lib/data/queries";
+import { listReviews, listTransactions, listUpcomingDates, profilesById } from "@/lib/data/queries";
+import { UPCOMING_DAYS, addDays, localToday } from "@/lib/domain/schedule";
+import { UpcomingDates } from "@/components/app/key-dates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, StatCard } from "@/components/app/page-header";
@@ -14,9 +16,11 @@ export default async function AgentDashboard({ params }: PageProps<"/o/[org]/das
   const { org: slug } = await params;
   const { supabase, org, userId } = await requireOrg(slug);
 
-  const [transactions, myReviews] = await Promise.all([
+  const today = localToday();
+  const [transactions, myReviews, upcoming] = await Promise.all([
     listTransactions(supabase, org.id, { agentId: userId }),
     listReviews(supabase, org.id, { requestedBy: userId }),
+    listUpcomingDates(supabase, org.id, addDays(today, UPCOMING_DAYS), { agentId: userId }),
   ]);
   const open = transactions.filter((t) => t.status !== "closed" && t.status !== "cancelled");
   const awaiting = myReviews.filter((r) => r.state === "ready_for_broker" || r.state === "pending_analysis");
@@ -39,6 +43,14 @@ export default async function AgentDashboard({ params }: PageProps<"/o/[org]/das
         <StatCard label="Awaiting broker review" value={awaiting.length} />
         <StatCard label="Changes requested" value={needsChanges.length} />
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Due in the next two weeks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UpcomingDates orgSlug={slug} dates={upcoming} today={today} />
+        </CardContent>
+      </Card>
       {needsChanges.length > 0 ? (
         <Card>
           <CardHeader>

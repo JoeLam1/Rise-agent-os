@@ -47,6 +47,10 @@ function samplePdf(text) {
 const DIR = OUT;
 writeFileSync(join(OUT, "contract-v1.pdf"), samplePdf("SAMPLE PURCHASE AGREEMENT v1 - FICTIONAL TEST DATA"));
 writeFileSync(join(OUT, "contract-v2.pdf"), samplePdf("SAMPLE PURCHASE AGREEMENT v2 - FICTIONAL TEST DATA"));
+writeFileSync(
+  join(OUT, "contract-v3-signed.pdf"),
+  samplePdf(["SAMPLE PURCHASE AGREEMENT v2 - FICTIONAL TEST DATA", "Closing on June 30. Signed: /s/ Pat Example /s/ Sam Sample"]),
+);
 writeFileSync(join(OUT, "fake.pdf"), "<html>not a pdf</html>");
 writeFileSync(
   join(OUT, "ai-contract.pdf"),
@@ -312,6 +316,81 @@ await step("Audit log records the whole trail", async () => {
     expect((await p.getByText(a, { exact: true }).count()) > 0, `missing ${a}`);
   }
   await shot(p, "audit-log");
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 006: key dates, review turnaround, comparing versions
+// ---------------------------------------------------------------------------
+const njDate = (offsetDays) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+  return new Date(Date.parse(`${today}T00:00:00Z`) + offsetDays * 86_400_000).toISOString().slice(0, 10);
+};
+
+await step("Agent records key dates; they show on both dashboards until done", async () => {
+  const p = agent.page;
+  await p.goto(txnUrl);
+  await p.getByLabel("Date for").selectOption("other");
+  await p.getByLabel("Due on").fill(njDate(5));
+  await p.getByRole("button", { name: "Add date" }).click();
+  await p.getByText("Describe the date.").waitFor();
+  await p.getByLabel("Date for").selectOption("inspection");
+  await p.getByLabel("Due on").fill(njDate(3));
+  await p.getByRole("button", { name: "Add date" }).click();
+  await p.getByText("In 3 days").waitFor();
+  await shot(p, "key-dates");
+
+  await p.goto(`${BASE}/o/${slug}/dashboard/agent`);
+  const agentRow = p.getByRole("row").filter({ hasText: "Inspection" });
+  await agentRow.getByRole("link", { name: "10 Example Lane" }).waitFor();
+
+  const b = broker.page;
+  await b.goto(`${BASE}/o/${slug}/dashboard/broker`);
+  await b.getByRole("row").filter({ hasText: "Inspection" }).getByText("In 3 days").waitFor();
+  await b.goto(txnUrl);
+  await b.getByRole("button", { name: "Mark done: Inspection" }).click();
+  await b.getByRole("button", { name: "Reopen: Inspection" }).waitFor();
+  await b.goto(`${BASE}/o/${slug}/dashboard/broker`);
+  await b.getByText("Nothing due in the next two weeks.").waitFor();
+  await b.goto(`${BASE}/o/${slug}/audit`);
+  await b.getByText("key_date.completed", { exact: true }).first().waitFor();
+});
+
+await step("Broker dashboard shows review turnaround", async () => {
+  const p = broker.page;
+  await p.goto(`${BASE}/o/${slug}/dashboard/broker`);
+  const card = p.getByTestId("turnaround");
+  await card.waitFor();
+  const text = await card.textContent();
+  expect(/Decisions \(last 30 days\)\s*1/.test(text), `turnaround shows: ${text}`);
+  expect(!/Median time to a decision \(last 30 days\)\s*—/.test(text), `no median: ${text}`);
+  await shot(p, "broker-dashboard-turnaround");
+});
+
+await step("Versions compare word by word; the post-execution review links to the approved draft", async () => {
+  const p = agent.page;
+  await p.goto(txnUrl);
+  await p.getByRole("link", { name: "Compare with v1" }).click();
+  await p.getByTestId("compare-summary").getByText("1 place changed: 1 word removed, 1 word added.").waitFor();
+  await p.locator("del", { hasText: "v1" }).waitFor();
+  await p.locator("ins", { hasText: "v2" }).waitFor();
+
+  await p.goto(txnUrl);
+  await p.locator('input[name="file"]').first().setInputFiles(`${DIR}/contract-v3-signed.pdf`);
+  await p.getByRole("button", { name: "Upload new version" }).click();
+  await p.getByText("Uploaded contract-v3-signed.pdf.").waitFor();
+  await p.reload();
+  await p.getByRole("button", { name: "Request post-execution review" }).click();
+  await p.waitForURL(/\/reviews\/[0-9a-f-]{36}$/);
+  const postUrl = p.url();
+
+  const b = broker.page;
+  await b.goto(postUrl);
+  await b.getByText(/Purchase agreement v2 was approved by Bo Demo-Broker/).waitFor();
+  await b.getByRole("link", { name: "Compare it with this version" }).click();
+  await b.getByText("Purchase agreement v2 → Purchase agreement v3").waitFor();
+  await b.getByTestId("compare-summary").getByText(/1 place changed: 0 words removed, \d+ words added\./).waitFor();
+  await b.locator("ins", { hasText: "Closing on June 30." }).waitFor();
+  await shot(b, "compare-post-execution");
 });
 
 await step("Agent can't open the audit log or broker dashboard", async () => {

@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOrg } from "@/lib/auth";
-import { getReview, listAnalysisRuns, listAudit, profilesById, displayName } from "@/lib/data/queries";
+import {
+  findApprovedPreSignature,
+  getReview,
+  listAnalysisRuns,
+  listAudit,
+  profilesById,
+  displayName,
+} from "@/lib/data/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
 import { ReviewStateBadge, ReviewTypeBadge } from "@/components/app/badges";
@@ -21,15 +28,19 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
   const review = await getReview(supabase, org.id, id);
   if (!review || !review.version) notFound();
 
-  const [runs, audit] = await Promise.all([
+  const [runs, audit, baseline] = await Promise.all([
     listAnalysisRuns(supabase, review.id),
     isBrokerOrAdmin(role) ? listAudit(supabase, org.id, { entityIds: [review.id] }) : Promise.resolve([]),
+    review.review_type === "post_execution"
+      ? findApprovedPreSignature(supabase, org.id, review.transaction_id, review.version.document?.id)
+      : Promise.resolve(null),
   ]);
   const people = await profilesById(supabase, [
     review.requested_by,
     review.decided_by,
     review.version.uploaded_by,
     review.transaction?.agent_id,
+    baseline?.decided_by,
     ...audit.map((a) => a.actor_id),
   ]);
   const v = review.version;
@@ -52,17 +63,47 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Analysis</CardTitle>
-            <CardDescription>
-              A checklist to help the broker read the document. It never approves or rejects anything.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AnalysisPanel run={runs[0]} />
-          </CardContent>
-        </Card>
+        <div className="grid content-start gap-6">
+          {review.review_type === "post_execution" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Changes since the approved pre-signature version</CardTitle>
+                <CardDescription>
+                  A word-by-word text comparison. It doesn&apos;t see signatures, initials or handwriting.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm">
+                {baseline?.version ? (
+                  <p>
+                    {baseline.version.document?.title ?? "Document"} v{baseline.version.version_number} was approved by{" "}
+                    {displayName(people.get(baseline.decided_by))} on {formatDateTime(baseline.decided_at)}.{" "}
+                    <Link
+                      className="underline underline-offset-4"
+                      href={`/o/${slug}/compare?before=${baseline.version.id}&after=${v.id}`}
+                    >
+                      Compare it with this version
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No pre-signature review was approved for this transaction, so there is nothing to compare with.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+          <Card>
+            <CardHeader>
+              <CardTitle>Analysis</CardTitle>
+              <CardDescription>
+                A checklist to help the broker read the document. It never approves or rejects anything.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AnalysisPanel run={runs[0]} />
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid content-start gap-6">
           <Card>
