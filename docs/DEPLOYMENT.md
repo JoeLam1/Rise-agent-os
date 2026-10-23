@@ -32,6 +32,14 @@ person's private account, and none of it may be shared with Pulse.
    This creates every table, RLS policy and function, plus the private
    `transaction-documents` storage bucket. Migrations are append-only; never
    edit one that has been pushed.
+
+   Or let Supabase deploy them: **Project Settings → Integrations → GitHub**,
+   connect the repo, set **Working directory** to `.`, turn on **Deploy to
+   production** for `main`, and leave **Automatic branching** off (preview
+   databases are billed). Then every merge to `main` applies new migrations to
+   the live project, so a migration is live as soon as its PR merges. The
+   integration only runs on a new push to `main`, not when it is first saved.
+   It doesn't touch Auth settings; steps 3–8 are still done by hand.
 3. **Auth → Sign In / Providers → Email**:
    - Enable email sign-ups.
    - **Confirm email: on.** This is required. Invitations are only accepted once
