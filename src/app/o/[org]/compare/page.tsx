@@ -113,7 +113,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
               >
                 {beforeVersion.original_filename}
               </a>{" "}
-              · uploaded {formatDateTime(beforeVersion.created_at)} ·{" "}
+              · uploaded {formatDateTime(beforeVersion.created_at, org.time_zone)} ·{" "}
               <code className="text-xs">sha256 {beforeVersion.sha256.slice(0, 12)}…</code>
             </dd>
             <dt>After</dt>
@@ -126,7 +126,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
               >
                 {afterVersion.original_filename}
               </a>{" "}
-              · uploaded {formatDateTime(afterVersion.created_at)} ·{" "}
+              · uploaded {formatDateTime(afterVersion.created_at, org.time_zone)} ·{" "}
               <code className="text-xs">sha256 {afterVersion.sha256.slice(0, 12)}…</code>
             </dd>
           </dl>

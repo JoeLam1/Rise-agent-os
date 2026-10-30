@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { sendInviteEmail } from "@/lib/supabase/invite-email";
 import { friendlyDbError } from "@/lib/domain/db-errors";
+import { timeZoneLabel } from "@/lib/domain/schedule";
 import type { ActionState } from "./state";
 
 const orgSchema = z.object({
@@ -66,6 +67,16 @@ export async function setAiReview(orgSlug: string, _prev: ActionState, formData:
   if (error) return { error: friendlyDbError(error) };
   revalidatePath(`/o/${orgSlug}`, "layout");
   return { message: enabled ? "AI review is on for new review requests." : "AI review is off. New requests use the mock." };
+}
+
+export async function setTimeZone(orgSlug: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const timeZone = String(formData.get("time_zone") ?? "");
+  if (!timeZone) return { error: "Choose a time zone." };
+  const { supabase, org } = await requireAdmin(orgSlug);
+  const { error } = await supabase.rpc("set_org_time_zone", { p_org: org.id, p_time_zone: timeZone });
+  if (error) return { error: friendlyDbError(error) };
+  revalidatePath(`/o/${orgSlug}`, "layout");
+  return { message: `Time zone saved. Key dates and times now use ${timeZoneLabel(timeZone)}.` };
 }
 
 const roleSchema = z.enum(["agent", "broker", "admin"]);

@@ -70,7 +70,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
               {transaction.property_city ?? "—"}, {transaction.property_state}
             </dd>
             <dt className="text-muted-foreground">Created</dt>
-            <dd>{formatDateTime(transaction.created_at)}</dd>
+            <dd>{formatDateTime(transaction.created_at, org.time_zone)}</dd>
             <dt className="text-muted-foreground">Notes</dt>
             <dd className="whitespace-pre-wrap">{transaction.notes || "—"}</dd>
           </dl>
@@ -86,7 +86,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <KeyDateList orgSlug={slug} dates={keyDates} today={localToday()} />
+          <KeyDateList orgSlug={slug} dates={keyDates} today={localToday(org.time_zone)} />
           <AddKeyDateForm orgSlug={slug} transactionId={transaction.id} />
         </CardContent>
       </Card>
@@ -122,7 +122,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
                       </a>
                       <span className="text-muted-foreground">
                         {formatBytes(v.size_bytes)} · {displayName(people.get(v.uploaded_by))} ·{" "}
-                        {formatDateTime(v.created_at)}
+                        {formatDateTime(v.created_at, org.time_zone)}
                       </span>
                       <code className="text-muted-foreground text-xs" title={`SHA-256 ${v.sha256}`}>
                         sha256 {v.sha256.slice(0, 12)}…
@@ -160,7 +160,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/o/[o
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ReviewTable orgSlug={slug} reviews={reviews} people={people} empty="No reviews requested yet." />
+          <ReviewTable timeZone={org.time_zone} orgSlug={slug} reviews={reviews} people={people} empty="No reviews requested yet." />
         </CardContent>
       </Card>
     </>

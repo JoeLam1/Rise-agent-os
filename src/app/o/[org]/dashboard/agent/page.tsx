@@ -16,7 +16,7 @@ export default async function AgentDashboard({ params }: PageProps<"/o/[org]/das
   const { org: slug } = await params;
   const { supabase, org, userId } = await requireOrg(slug);
 
-  const today = localToday();
+  const today = localToday(org.time_zone);
   const [transactions, myReviews, upcoming] = await Promise.all([
     listTransactions(supabase, org.id, { agentId: userId }),
     listReviews(supabase, org.id, { requestedBy: userId }),
@@ -57,7 +57,7 @@ export default async function AgentDashboard({ params }: PageProps<"/o/[org]/das
             <CardTitle>Changes requested</CardTitle>
           </CardHeader>
           <CardContent>
-            <ReviewTable orgSlug={slug} reviews={needsChanges} people={people} empty="" />
+            <ReviewTable timeZone={org.time_zone} orgSlug={slug} reviews={needsChanges} people={people} empty="" />
           </CardContent>
         </Card>
       ) : null}
@@ -82,7 +82,7 @@ export default async function AgentDashboard({ params }: PageProps<"/o/[org]/das
           <CardTitle>Awaiting broker review</CardTitle>
         </CardHeader>
         <CardContent>
-          <ReviewTable orgSlug={slug} reviews={awaiting} people={people} empty="Nothing is waiting on your broker." />
+          <ReviewTable timeZone={org.time_zone} orgSlug={slug} reviews={awaiting} people={people} empty="Nothing is waiting on your broker." />
         </CardContent>
       </Card>
     </>

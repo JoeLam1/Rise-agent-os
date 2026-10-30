@@ -37,7 +37,7 @@ export default async function AuditPage({ params }: PageProps<"/o/[org]/audit">)
               <TableBody>
                 {entries.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell>{formatDateTime(e.created_at)}</TableCell>
+                    <TableCell>{formatDateTime(e.created_at, org.time_zone)}</TableCell>
                     <TableCell>{e.actor_id ? displayName(people.get(e.actor_id)) : "System"}</TableCell>
                     <TableCell className="font-mono text-xs">{e.action}</TableCell>
                     <TableCell className="text-muted-foreground max-w-md truncate font-mono text-xs" title={JSON.stringify(e.metadata)}>

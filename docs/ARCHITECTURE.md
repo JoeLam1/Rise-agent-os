@@ -229,3 +229,16 @@ request_review() ──► analysis_runs: queued ──► worker claims: runnin
   - an audit trigger for insert, update and delete.
 - **Turnaround** is computed in `src/lib/domain/schedule.ts` from the reviews
   a broker can already read. It uses no new table or function.
+
+## Brokerage time zone and database tuning (Sprint 007)
+- **Time zone:** `organizations.time_zone` (default `America/New_York`). Only
+  an admin with two-step sign-in changes it, through
+  `public.set_org_time_zone`, which accepts region/city names Postgres knows
+  and writes `organization.time_zone_changed` with the old and new zone.
+  - The app passes it to `localToday()` (which day is "today" for key dates)
+    and `formatDateTime()` (every timestamp shown). Key dates are plain
+    calendar dates and don't shift when the zone changes.
+- **Advisor fixes:** every foreign key in `public` has a covering index, and
+  RLS policies call `(select auth.uid())` so Postgres evaluates it once per
+  statement. `tests/db/time-zone.test.ts` checks both against the catalog, so
+  a new table or policy that regresses fails the DB tests.

@@ -58,7 +58,7 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
                     <TableCell>
                       <Badge variant="outline">{ROLE_LABELS[inv.role as OrgRole]}</Badge>
                     </TableCell>
-                    <TableCell>{formatDateTime(inv.expires_at)}</TableCell>
+                    <TableCell>{formatDateTime(inv.expires_at, org.time_zone)}</TableCell>
                     <TableCell className="text-right">
                       <form action={revokeInvitation.bind(null, slug, inv.id)}>
                         <Button type="submit" variant="outline" size="sm" aria-label={`Revoke invitation for ${inv.email}`}>
@@ -103,7 +103,7 @@ export default async function MembersPage({ params }: PageProps<"/o/[org]/member
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>{formatDateTime(m.created_at)}</TableCell>
+                  <TableCell>{formatDateTime(m.created_at, org.time_zone)}</TableCell>
                   <TableCell className="text-right">
                     {m.user_id === userId ? (
                       <span className="text-muted-foreground text-sm">You</span>

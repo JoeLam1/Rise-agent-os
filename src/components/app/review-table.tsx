@@ -14,6 +14,7 @@ export function ReviewTable({
   empty,
   showType = true,
   timeColumn = "requested",
+  timeZone,
 }: {
   orgSlug: string;
   reviews: ReviewListItem[];
@@ -21,6 +22,7 @@ export function ReviewTable({
   empty: string;
   showType?: boolean;
   timeColumn?: "requested" | "decided";
+  timeZone: string;
 }) {
   if (reviews.length === 0) return <EmptyState>{empty}</EmptyState>;
   return (
@@ -55,7 +57,7 @@ export function ReviewTable({
             <TableCell>
               {displayName(people.get(timeColumn === "requested" ? r.requested_by : (r.decided_by ?? "")))}
             </TableCell>
-            <TableCell>{formatDateTime(timeColumn === "requested" ? r.requested_at : r.decided_at)}</TableCell>
+            <TableCell>{formatDateTime(timeColumn === "requested" ? r.requested_at : r.decided_at, timeZone)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

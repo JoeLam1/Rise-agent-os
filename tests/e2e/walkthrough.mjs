@@ -366,6 +366,25 @@ await step("Broker dashboard shows review turnaround", async () => {
   await shot(p, "broker-dashboard-turnaround");
 });
 
+// Sprint 007: each brokerage's own time zone
+await step("Admin changes the brokerage's time zone; it is audited", async () => {
+  const p = admin.page;
+  await p.goto(`${BASE}/o/${slug}/settings`);
+  await p.getByLabel("Time zone").selectOption("America/Chicago");
+  await p.getByRole("button", { name: "Save time zone" }).click();
+  await p.getByText("Time zone saved. Key dates and times now use Central (Chicago).").waitFor();
+  await p.reload();
+  expect((await p.getByLabel("Time zone").inputValue()) === "America/Chicago", "time zone not saved");
+  await shot(p, "settings-time-zone");
+  await p.goto(`${BASE}/o/${slug}/audit`);
+  await p.getByText("organization.time_zone_changed", { exact: true }).first().waitFor();
+  // Back to Eastern; later steps count days on the New Jersey calendar.
+  await p.goto(`${BASE}/o/${slug}/settings`);
+  await p.getByLabel("Time zone").selectOption("America/New_York");
+  await p.getByRole("button", { name: "Save time zone" }).click();
+  await p.getByText("Time zone saved.", { exact: false }).waitFor();
+});
+
 await step("Versions compare word by word; the post-execution review links to the approved draft", async () => {
   const p = agent.page;
   await p.goto(txnUrl);
