@@ -34,6 +34,7 @@ export type Organization = {
   name: string;
   slug: string;
   ai_review_enabled: boolean;
+  time_zone: string;
   created_at: string;
 };
 

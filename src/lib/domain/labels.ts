@@ -69,13 +69,10 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function formatDateTime(value: string | null): string {
+/** A moment in time, shown on the brokerage's clock (`organizations.time_zone`). */
+export function formatDateTime(value: string | null, timeZone: string): string {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/New_York",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(value));
 }
 
 export function formatDate(value: string | null): string {

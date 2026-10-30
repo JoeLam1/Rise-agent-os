@@ -22,7 +22,7 @@ const STATUS_VARIANT = {
 
 const ENGINE_NAME = { mock: "Mock", nj_contract_ai: "NJ contract AI (draft)" } as const;
 
-export function AnalysisPanel({ run }: { run: AnalysisRun | undefined }) {
+export function AnalysisPanel({ run, timeZone }: { run: AnalysisRun | undefined; timeZone: string }) {
   if (!run) return <p className="text-muted-foreground text-sm">No analysis has run for this review.</p>;
 
   if (run.status === "queued" || run.status === "running") {
@@ -66,7 +66,7 @@ export function AnalysisPanel({ run }: { run: AnalysisRun | undefined }) {
         {run.is_mock ? <MockBadge /> : <Badge variant="secondary">{ENGINE_NAME[run.engine]}</Badge>}
         <span className="text-muted-foreground">
           {run.engine_version}
-          {result.model ? ` · ${result.model}` : ""} · {formatDateTime(run.completed_at)}
+          {result.model ? ` · ${result.model}` : ""} · {formatDateTime(run.completed_at, timeZone)}
         </span>
       </div>
       <Alert variant="warning">

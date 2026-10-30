@@ -26,7 +26,7 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
   const { org: slug } = await params;
   const { supabase, org } = await requireBroker(slug);
 
-  const today = localToday();
+  const today = localToday(org.time_zone);
   const [transactions, waiting, decisions, audit, upcoming, reviewTimes] = await Promise.all([
     listTransactions(supabase, org.id),
     listReviews(supabase, org.id, { states: ["ready_for_broker"] }),
@@ -81,7 +81,7 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
           <CardTitle>Awaiting your decision</CardTitle>
         </CardHeader>
         <CardContent>
-          <ReviewTable orgSlug={slug} reviews={waiting} people={people} empty="No reviews are waiting." />
+          <ReviewTable timeZone={org.time_zone} orgSlug={slug} reviews={waiting} people={people} empty="No reviews are waiting." />
         </CardContent>
       </Card>
       <Card>
@@ -98,7 +98,7 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
             <CardTitle>Recent decisions</CardTitle>
           </CardHeader>
           <CardContent>
-            <ReviewTable
+            <ReviewTable timeZone={org.time_zone}
               orgSlug={slug}
               reviews={decisions}
               people={people}
@@ -124,7 +124,7 @@ export default async function BrokerDashboard({ params }: PageProps<"/o/[org]/da
                     <span className="font-medium">{a.actor_id ? displayName(people.get(a.actor_id)) : "System"}</span>{" "}
                     <span className="text-muted-foreground">{a.action}</span>
                   </span>
-                  <span className="text-muted-foreground shrink-0">{formatDateTime(a.created_at)}</span>
+                  <span className="text-muted-foreground shrink-0">{formatDateTime(a.created_at, org.time_zone)}</span>
                 </li>
               ))}
             </ul>

@@ -4,8 +4,15 @@ import { addDays, daysBetween, dueState, formatHours, localToday, turnaround } f
 describe("key dates", () => {
   it("uses the brokerage's calendar day, not UTC", () => {
     // 02:30 UTC on Apr 10 is still Apr 9 in New Jersey.
-    expect(localToday(new Date("2027-04-10T02:30:00Z"))).toBe("2027-04-09");
-    expect(localToday(new Date("2027-04-10T16:00:00Z"))).toBe("2027-04-10");
+    expect(localToday("America/New_York", new Date("2027-04-10T02:30:00Z"))).toBe("2027-04-09");
+    expect(localToday("America/New_York", new Date("2027-04-10T16:00:00Z"))).toBe("2027-04-10");
+  });
+
+  it("follows each brokerage's own time zone", () => {
+    // 05:30 UTC on Apr 10 is Apr 10 in New Jersey but still Apr 9 in California.
+    const now = new Date("2027-04-10T05:30:00Z");
+    expect(localToday("America/New_York", now)).toBe("2027-04-10");
+    expect(localToday("America/Los_Angeles", now)).toBe("2027-04-09");
   });
 
   it("counts calendar days across month ends and DST", () => {

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
-import { AiReviewForm } from "@/components/forms/org-forms";
+import { AiReviewForm, TimeZoneForm } from "@/components/forms/org-forms";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -35,6 +35,19 @@ export default async function SettingsPage({ params }: PageProps<"/o/[org]/setti
             <li>The AI never approves anything. A broker reads every document and decides.</li>
           </ul>
           <AiReviewForm orgSlug={slug} enabled={org.ai_review_enabled} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Time zone</CardTitle>
+          <CardDescription>
+            The brokerage&apos;s clock. It decides which calendar day is &quot;today&quot; for key dates (due today,
+            overdue, due in the next two weeks) and how times are shown across the app. Key dates themselves are
+            calendar dates people type in and don&apos;t move when this changes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TimeZoneForm orgSlug={slug} timeZone={org.time_zone} />
         </CardContent>
       </Card>
     </>

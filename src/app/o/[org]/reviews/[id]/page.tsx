@@ -76,7 +76,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
                 {baseline?.version ? (
                   <p>
                     {baseline.version.document?.title ?? "Document"} v{baseline.version.version_number} was approved by{" "}
-                    {displayName(people.get(baseline.decided_by))} on {formatDateTime(baseline.decided_at)}.{" "}
+                    {displayName(people.get(baseline.decided_by))} on {formatDateTime(baseline.decided_at, org.time_zone)}.{" "}
                     <Link
                       className="underline underline-offset-4"
                       href={`/o/${slug}/compare?before=${baseline.version.id}&after=${v.id}`}
@@ -100,7 +100,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AnalysisPanel run={runs[0]} />
+              <AnalysisPanel run={runs[0]} timeZone={org.time_zone} />
             </CardContent>
           </Card>
         </div>
@@ -118,7 +118,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
                 {v.document ? DOCUMENT_KIND_LABELS[v.document.kind] : ""} · {formatBytes(v.size_bytes)}
               </p>
               <p className="text-muted-foreground">
-                Uploaded by {displayName(people.get(v.uploaded_by))} on {formatDateTime(v.created_at)}
+                Uploaded by {displayName(people.get(v.uploaded_by))} on {formatDateTime(v.created_at, org.time_zone)}
               </p>
               <code className="text-muted-foreground text-xs break-all">sha256 {v.sha256}</code>
             </CardContent>
@@ -128,7 +128,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
             <CardHeader>
               <CardTitle>Decision</CardTitle>
               <CardDescription>
-                Requested by {displayName(people.get(review.requested_by))} on {formatDateTime(review.requested_at)}
+                Requested by {displayName(people.get(review.requested_by))} on {formatDateTime(review.requested_at, org.time_zone)}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 text-sm">
@@ -136,7 +136,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
                 <div className="grid gap-1">
                   <p>
                     <ReviewStateBadge state={review.state} /> by {displayName(people.get(review.decided_by))} on{" "}
-                    {formatDateTime(review.decided_at)}
+                    {formatDateTime(review.decided_at, org.time_zone)}
                   </p>
                   {review.decision_note ? <p className="whitespace-pre-wrap">{review.decision_note}</p> : null}
                 </div>
@@ -166,7 +166,7 @@ export default async function ReviewPage({ params }: PageProps<"/o/[org]/reviews
                     <li key={a.id}>
                       <span className="font-medium">{a.action}</span>{" "}
                       <span className="text-muted-foreground">
-                        {a.actor_id ? displayName(people.get(a.actor_id)) : "System"} · {formatDateTime(a.created_at)}
+                        {a.actor_id ? displayName(people.get(a.actor_id)) : "System"} · {formatDateTime(a.created_at, org.time_zone)}
                       </span>
                     </li>
                   ))}

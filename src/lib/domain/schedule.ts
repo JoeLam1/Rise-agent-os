@@ -1,12 +1,28 @@
 import type { KeyDateKind, Review } from "./types";
 
-/** Brokerages are in New Jersey for the pilot; "today" is their calendar day. */
-export const BROKERAGE_TIME_ZONE = "America/New_York";
+/** The default for new brokerages (`organizations.time_zone`); each can change it in Settings. */
+export const DEFAULT_TIME_ZONE = "America/New_York";
+/** Time zones offered in Settings. The database accepts any region/city zone name. */
+export const TIME_ZONE_CHOICES: { value: string; label: string }[] = [
+  { value: "America/New_York", label: "Eastern (New York, New Jersey)" },
+  { value: "America/Chicago", label: "Central (Chicago)" },
+  { value: "America/Denver", label: "Mountain (Denver)" },
+  { value: "America/Phoenix", label: "Arizona (Phoenix, no daylight saving)" },
+  { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
+  { value: "America/Anchorage", label: "Alaska (Anchorage)" },
+  { value: "Pacific/Honolulu", label: "Hawaii (Honolulu)" },
+  { value: "America/Puerto_Rico", label: "Atlantic (Puerto Rico)" },
+];
+
+export function timeZoneLabel(value: string): string {
+  return TIME_ZONE_CHOICES.find((z) => z.value === value)?.label ?? value;
+}
+
 /** How far ahead dashboards look for key dates. */
 export const UPCOMING_DAYS = 14;
 
 /** Today's date as YYYY-MM-DD in the brokerage's time zone. */
-export function localToday(now = new Date(), timeZone = BROKERAGE_TIME_ZONE): string {
+export function localToday(timeZone: string, now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 

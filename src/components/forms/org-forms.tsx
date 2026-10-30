@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { createOrganization, addMember, setAiReview } from "@/app/actions/orgs";
+import { createOrganization, addMember, setAiReview, setTimeZone } from "@/app/actions/orgs";
+import { TIME_ZONE_CHOICES } from "@/lib/domain/schedule";
 import { initialActionState } from "@/app/actions/state";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -54,6 +55,28 @@ export function AiReviewForm({ orgSlug, enabled }: { orgSlug: string; enabled: b
         </SubmitButton>
       </div>
       <FormMessage state={state} />
+    </form>
+  );
+}
+
+export function TimeZoneForm({ orgSlug, timeZone }: { orgSlug: string; timeZone: string }) {
+  const [state, action] = useActionState(setTimeZone.bind(null, orgSlug), initialActionState);
+  const choices = TIME_ZONE_CHOICES.some((z) => z.value === timeZone)
+    ? TIME_ZONE_CHOICES
+    : [{ value: timeZone, label: timeZone }, ...TIME_ZONE_CHOICES];
+  return (
+    <form action={action} className="grid gap-4 sm:grid-cols-[minmax(0,20rem)_max-content] sm:items-end">
+      <Field label="Time zone" htmlFor="time_zone">
+        <NativeSelect id="time_zone" name="time_zone" defaultValue={timeZone}>
+          {choices.map((z) => (
+            <option key={z.value} value={z.value}>
+              {z.label}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <SubmitButton pendingText="Saving…">Save time zone</SubmitButton>
+      <FormMessage state={state} className="sm:col-span-2" />
     </form>
   );
 }

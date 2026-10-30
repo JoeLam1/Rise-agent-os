@@ -52,7 +52,7 @@ export default async function QueuePage({ params }: PageProps<"/o/[org]/queues/[
           <CardDescription>Oldest first.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ReviewTable orgSlug={slug} reviews={open} people={people} showType={false} empty="The queue is empty." />
+          <ReviewTable timeZone={org.time_zone} orgSlug={slug} reviews={open} people={people} showType={false} empty="The queue is empty." />
         </CardContent>
       </Card>
       <Card>
@@ -60,7 +60,7 @@ export default async function QueuePage({ params }: PageProps<"/o/[org]/queues/[
           <CardTitle>Closed</CardTitle>
         </CardHeader>
         <CardContent>
-          <ReviewTable
+          <ReviewTable timeZone={org.time_zone}
             orgSlug={slug}
             reviews={closed}
             people={people}
